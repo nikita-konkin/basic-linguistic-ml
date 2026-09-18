@@ -1,0 +1,5 @@
+# Зависимости для прогона ноутбуков в CI и локально.
+-r requirements.txt
+pytest>=8.0
+nbmake>=1.5
+ipykernel>=6.29

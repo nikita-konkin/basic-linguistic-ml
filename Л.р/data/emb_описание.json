@@ -1,0 +1,7 @@
+{
+ "модель": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+ "размерность": 384,
+ "нормализованы": true,
+ "пулинг": "mean pooling по токенам с маской",
+ "порядок строк": "совпадает с порядком строк в loc_corpus.csv"
+}
