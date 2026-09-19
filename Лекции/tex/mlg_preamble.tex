@@ -1,0 +1,77 @@
+% Общая преамбула лекций курса. Подключается после \documentclass:
+%
+%     \documentclass[aspectratio=169,12pt]{beamer}
+%     \input{mlg_preamble}
+%
+% Здесь только оформление и макросы — ни \title, ни текста слайдов, чтобы
+% пять презентаций курса выглядели одинаково и правились в одном месте.
+%
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{russian}
+\setotherlanguage{english}
+\setmainfont{Calibri}
+\setsansfont{Calibri}
+\setmonofont{Consolas}[Scale=0.92]
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+
+% ---------------------------------------------------------------- оформление
+\definecolor{ink}{HTML}{1B2433}
+\definecolor{navy}{HTML}{2B4C6F}
+\definecolor{brick}{HTML}{B03A2B}
+\definecolor{moss}{HTML}{3E7D5A}
+\definecolor{plum}{HTML}{6B5B95}
+\definecolor{ash}{HTML}{8B9299}
+\definecolor{paper}{HTML}{ECEFF3}
+
+\usetheme{default}
+\usecolortheme{default}
+\setbeamercolor{structure}{fg=navy}
+\setbeamercolor{frametitle}{fg=navy}
+\setbeamercolor{normal text}{fg=ink}
+\setbeamercolor{itemize item}{fg=navy}
+\setbeamercolor{itemize subitem}{fg=ash}
+\setbeamerfont{frametitle}{size=\Large,series=\bfseries}
+\setbeamerfont{framesubtitle}{size=\small,series=\mdseries}
+\setbeamercolor{framesubtitle}{fg=ash}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize item}{\raisebox{0.15ex}{\tiny$\bullet$}}
+\setbeamertemplate{itemize subitem}{\raisebox{0.15ex}{\tiny--}}
+\setbeamersize{text margin left=1.1cm, text margin right=1.1cm}
+
+\setbeamertemplate{footline}{%
+  \hbox{\begin{beamercolorbox}[wd=\paperwidth,ht=2.6ex,dp=1.4ex,leftskip=1.1cm,%
+        rightskip=1.1cm]{}%
+    {\color{ash}\scriptsize Основы машинного обучения \quad·\quad
+     Цифровая лингвистика и локализация}\hfill
+    {\color{ash}\scriptsize\insertframenumber}%
+  \end{beamercolorbox}}}
+
+% Врезка: связь слайда с лабораторной или с работой переводчика.
+% Ширина считается точно: colorbox добавляет \fboxsep с каждой стороны,
+% поэтому parbox должен быть на 2\fboxsep уже текстового поля — иначе
+% на каждом слайде вылезает overfull hbox.
+\newcommand{\врезка}[1]{%
+  \par\vspace{0.5ex}\noindent
+  \colorbox{paper}{%
+    \parbox{\dimexpr\textwidth-2\fboxsep\relax}{%
+      \vspace{0.7ex}\small #1\vspace{0.7ex}}}\par}
+
+% Колонка таблицы заданной доли ширины, без растягивания пробелов.
+% Объявлять её нужно здесь: внутри frame beamer пересканирует тело кадра,
+% и #1 в определении вызывает «Illegal parameter number».
+\newcolumntype{Л}[1]{>{\raggedright\arraybackslash}p{#1\textwidth}}
+
+% Ссылка на интерактивную страницу к слайду. Playground'ы считают те же
+% числа на том же корпусе, что и лабораторные, поэтому на них можно
+% ссылаться прямо с лекции, не оговаривая расхождений.
+\hypersetup{colorlinks=true,urlcolor=moss,linkcolor=moss}
+\newcommand{\playground}[3]{%
+  \par\vspace{0.4ex}%
+  {\footnotesize\color{ash}$\rightarrow$~\href{#1}{\bfseries #2} — #3\par}}
+
+\newcommand{\кейс}[1]{{\color{brick}\small\textbf{#1}}}
+\newcommand{\числ}[1]{{\color{navy}\bfseries #1}}
