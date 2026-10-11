@@ -385,6 +385,13 @@ SELECT_WORK = """<script>
 })();
 </script>"""
 
+# Тема, выбранная кнопкой, ставится до отрисовки, чтобы страница не мигала.
+THEME_HEAD = (
+    '<script>try{var t=localStorage.getItem("mlg-theme");'
+    'if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>'
+)
+THEME_BUTTON = '<button type="button" class="theme-toggle" hidden>тёмная тема</button>'
+
 # Ссылка на свёрнутый раздел (из текста или по адресу с #) раскрывает его.
 OPEN_ON_LINK = """<script>
 (function () {
@@ -608,10 +615,11 @@ def render_index(course: dict, files: dict[str, dict]) -> str:
 <link rel="preload" href="fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css?v={css}">
+{THEME_HEAD}
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%231d2430'/%3E%3Ccircle cx='30' cy='50' r='11' fill='none' stroke='%23c9d1dc' stroke-width='6'/%3E%3Ccircle cx='70' cy='50' r='11' fill='%23e58a7c'/%3E%3Cpath d='M41 50h18' stroke='%238fb3d9' stroke-width='8'/%3E%3C/svg%3E">
 </head>
 <body>
-<div class="topbar"><div class="bar"><span><a href="{REPO_URL}">basic-linguistic-ml</a> <span class="sep">›</span> курс</span><span class="counts">{e(counts)}</span></div></div>
+<div class="topbar"><div class="bar"><span><a href="{REPO_URL}">basic-linguistic-ml</a> <span class="sep">›</span> курс</span><span class="right"><span class="counts">{e(counts)}</span>{THEME_BUTTON}</span></div></div>
 <div class="page">
 <header class="site">
 <p class="kicker">{e(subtitle)}</p>
@@ -637,6 +645,7 @@ def render_index(course: dict, files: dict[str, dict]) -> str:
 </footer>
 </div>
 {OPEN_ON_LINK}
+<script src="theme.js?v={version(SITE / 'theme.js')}"></script>
 </body>
 </html>
 """
@@ -660,6 +669,9 @@ def stamp_journal_page(page: Path, course: dict) -> None:
     options = "".join(f'<option value="{e(name)}"></option>' for name in journal_works(course))
     for old, new in (
         ("<!-- course-works -->", options),
+        ("<!-- theme-head -->", THEME_HEAD),
+        ("<!-- theme-button -->", THEME_BUTTON),
+        ('src="../theme.js"', f'src="../theme.js?v={version(SITE / "theme.js")}"'),
         ('href="../style.css"', f'href="../style.css?v={version(SITE / "style.css")}"'),
         ('src="journal.js"', f'src="journal.js?v={version(SITE / "journal" / "journal.js")}"'),
     ):
@@ -679,6 +691,7 @@ def build(out: Path, journal: Path | None = None) -> None:
     files = copy_materials(course, out)
     (out / "index.html").write_text(render_index(course, files), encoding="utf-8")
     shutil.copyfile(SITE / "style.css", out / "style.css")
+    shutil.copyfile(SITE / "theme.js", out / "theme.js")
     shutil.copytree(SITE / "fonts", out / "fonts")
     shutil.copytree(SITE / "journal", out / "journal")
     stamp_journal_page(out / "journal" / "index.html", course)

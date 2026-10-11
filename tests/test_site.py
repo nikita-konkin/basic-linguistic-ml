@@ -215,6 +215,22 @@ def test_route_fields_are_checked(course):
         build_site.check_route(dict(course, current="lab9"))
 
 
+def test_theme_toggle_on_both_pages(dist):
+    css = (dist / "style.css").read_text(encoding="utf-8")
+    # Тёмная палитра включается и системой, и кнопкой; выбор «светлая»
+    # перекрывает системную тёмную тему.
+    assert ':root:not([data-theme="light"])' in css
+    assert ':root[data-theme="dark"]' in css
+    assert (dist / "theme.js").is_file()
+    for page, prefix in ((dist / "index.html", ""), (dist / "journal" / "index.html", "../")):
+        html_text = page.read_text(encoding="utf-8")
+        assert 'class="theme-toggle" hidden' in html_text, page
+        assert re.search(rf'src="{re.escape(prefix)}theme\.js\?v=[0-9a-f]{{10}}"', html_text), page
+        # Сохранённая тема ставится в <head>, до отрисовки.
+        head = html_text.split("</head>")[0]
+        assert 'localStorage.getItem("mlg-theme")' in head, page
+
+
 def test_fonts_are_bundled(dist):
     css = (dist / "style.css").read_text(encoding="utf-8")
     fonts = re.findall(r'url\("(fonts/[^"]+)"\)', css)

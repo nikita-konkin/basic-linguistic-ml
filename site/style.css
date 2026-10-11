@@ -67,8 +67,10 @@
   color-scheme: light;
 }
 
+/* Тёмная тема: по настройке системы, если на сайте не выбрана светлая,
+   или по кнопке (data-theme у <html>, см. theme.js). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --ink: #e4e8ee;
     --muted: #b0b9c5;
     --faint: #8d98a6;
@@ -99,6 +101,38 @@
     --focus: #8fb3d9;
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --ink: #e4e8ee;
+  --muted: #b0b9c5;
+  --faint: #8d98a6;
+  --navy: #8fb3d9;
+  --brick: #e58a7c;
+  --moss: #7cc39b;
+  --page: #11161d;
+  --card: #18202a;
+  --line: #2c3644;
+  --code: #222b36;
+  --bar: #0a0e13;
+  --bar-ink: #c9d1dc;
+  --bar-faint: #7f8ea3;
+  --tag-bg: #e4e8ee;
+  --tag-ink: #11161d;
+  --rail: #8fb3d9;
+  --branch: #5d6b7c;
+  --mark-bg: #5a2a22;
+  --mark-ink: #ffd9d1;
+  --ipynb-bg: #1f3550;
+  --ipynb-ink: #cfe0f3;
+  --pdf-bg: #4a2620;
+  --pdf-ink: #f6d0c8;
+  --web-bg: #1d3a2b;
+  --web-ink: #c8ead6;
+  --zip-bg: #2f2547;
+  --zip-ink: #ddd3f2;
+  --focus: #8fb3d9;
+  color-scheme: dark;
 }
 
 * {
@@ -202,6 +236,7 @@ p {
   padding: 9px 16px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
 }
 
@@ -217,6 +252,28 @@ p {
 .topbar .sep,
 .topbar .counts {
   color: var(--bar-faint);
+}
+
+.topbar .right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar .theme-toggle {
+  font: 12px/1 var(--mono);
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--bar-ink);
+  background: transparent;
+  border: 1px solid var(--bar-faint);
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.topbar .theme-toggle:hover {
+  color: #ffffff;
+  border-color: var(--bar-ink);
 }
 
 .topbar .counts {
