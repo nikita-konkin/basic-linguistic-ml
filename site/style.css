@@ -1000,17 +1000,32 @@ table.journal thead th:nth-child(2) {
   padding-left: 0.3rem;
 }
 
+/* Столбцы работ: название по центру над баллами, регистр — как ввёл
+   преподаватель. Длинные слова на телефоне переносятся по слогам. */
 table.journal thead th.work {
   white-space: normal;
+  text-align: center;
+  text-transform: none;
   min-width: 5.6em;
-  max-width: 8.5em;
+  max-width: 9em;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
   vertical-align: bottom;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
+table.journal td.score,
+table.journal .sum {
+  text-align: center;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
 }
 
 table.journal input[type="number"] {
   width: 3.6em;
   min-height: 36px;
-  text-align: right;
+  text-align: center;
   padding: 0.2rem 0.3rem;
   font: 16px var(--mono);
 }
@@ -1163,5 +1178,12 @@ ol.preview li.dup {
   table.journal td.name {
     white-space: nowrap;
     max-width: none;
+  }
+
+  /* На широком экране слова не режутся, столбцы работ одной ширины. */
+  table.journal thead th.work {
+    width: 9em;
+    -webkit-hyphens: manual;
+    hyphens: manual;
   }
 }

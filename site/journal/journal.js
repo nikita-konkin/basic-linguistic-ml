@@ -240,8 +240,8 @@
     const head = document.createElement("thead");
     const headRow = document.createElement("tr");
     headRow.append(cell("th", "№", "num"), cell("th", "ФИО"));
-    data.works.forEach((work) => headRow.append(cell("th", work, "num work")));
-    headRow.append(cell("th", "сумма", "num"));
+    data.works.forEach((work) => headRow.append(cell("th", work, "work")));
+    headRow.append(cell("th", "сумма", "num sum"));
     head.append(headRow);
 
     const body = document.createElement("tbody");
@@ -258,7 +258,7 @@
       }
       tr.append(cell("td", String(row + 1), "num"), nameCell);
 
-      const sumCell = cell("td", null, "num");
+      const sumCell = cell("td", null, "num sum");
       const showSum = () => {
         const value = total(student.scores);
         sumCell.textContent = value === null ? "—" : String(value);
@@ -266,7 +266,7 @@
 
       data.works.forEach((work, column) => {
         const value = student.scores[column];
-        const td = cell("td", null, "num");
+        const td = cell("td", null, "num score");
         if (teacher) {
           const input = document.createElement("input");
           input.type = "number";
