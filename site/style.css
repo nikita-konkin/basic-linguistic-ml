@@ -1,16 +1,68 @@
-/* Оформление сайта курса. Цвета — те же, что у слайдов
-   (Лекции/tex/mlg_preamble.tex): ink, navy, brick, moss, paper. */
+/* Оформление сайта курса: «корпус + маршрут».
+   Схема курса — как карта линий, материалы и разделы — как строки
+   корпусного менеджера. Вёрстка от узкого экрана: всё, что ниже первого
+   @media, — телефон; шире 640px схема становится горизонтальной.
+   Цвета navy и brick — те же, что у слайдов (Лекции/tex/mlg_preamble.tex). */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("fonts/IBMPlexSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("fonts/IBMPlexSans-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
 
 :root {
-  --ink: #1b2433;
-  --muted: #59626d;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --ink: #1d2430;
+  --muted: #536072;
+  --faint: #6b7686;
   --navy: #2b4c6f;
   --brick: #b03a2b;
-  --moss: #3e7d5a;
-  --paper: #eceff3;
-  --line: #d5dae1;
-  --bg: #ffffff;
-  --card: #f6f7f9;
+  --moss: #2e6b4e;
+  --page: #f3f4f6;
+  --card: #ffffff;
+  --line: #dde1e7;
+  --code: #e9ecf0;
+  --bar: #1d2430;
+  --bar-ink: #c9d1dc;
+  --bar-faint: #8fa1b8;
+  --tag-bg: #1d2430;
+  --tag-ink: #f3f4f6;
+  --rail: #2b4c6f;
+  --branch: #9aa7b6;
+  --mark-bg: #f6dcd6;
+  --mark-ink: #7a2a1d;
+  --ipynb-bg: #e3ecf5;
+  --ipynb-ink: #24405e;
+  --pdf-bg: #f6dcd6;
+  --pdf-ink: #7a2a1d;
+  --web-bg: #dcefe4;
+  --web-ink: #24543a;
+  --zip-bg: #ece7f6;
+  --zip-ink: #46336e;
   --focus: #2b4c6f;
   color-scheme: light;
 }
@@ -18,14 +70,32 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --ink: #e4e8ee;
-    --muted: #a3acb7;
+    --muted: #b0b9c5;
+    --faint: #8d98a6;
     --navy: #8fb3d9;
     --brick: #e58a7c;
     --moss: #7cc39b;
-    --paper: #1f2732;
-    --line: #333d4a;
-    --bg: #12171e;
-    --card: #19202a;
+    --page: #11161d;
+    --card: #18202a;
+    --line: #2c3644;
+    --code: #222b36;
+    --bar: #0a0e13;
+    --bar-ink: #c9d1dc;
+    --bar-faint: #7f8ea3;
+    --tag-bg: #e4e8ee;
+    --tag-ink: #11161d;
+    --rail: #8fb3d9;
+    --branch: #5d6b7c;
+    --mark-bg: #5a2a22;
+    --mark-ink: #ffd9d1;
+    --ipynb-bg: #1f3550;
+    --ipynb-ink: #cfe0f3;
+    --pdf-bg: #4a2620;
+    --pdf-ink: #f6d0c8;
+    --web-bg: #1d3a2b;
+    --web-ink: #c8ead6;
+    --zip-bg: #2f2547;
+    --zip-ink: #ddd3f2;
     --focus: #8fb3d9;
     color-scheme: dark;
   }
@@ -41,17 +111,9 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--page);
   color: var(--ink);
-  font-family: Calibri, Carlito, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  font-size: 17px;
-  line-height: 1.55;
-}
-
-.page {
-  max-width: 54rem;
-  margin: 0 auto;
-  padding: 0 16px 3rem;
+  font: 16px/1.55 var(--sans);
 }
 
 a {
@@ -67,118 +129,39 @@ summary:focus-visible {
   outline-offset: 2px;
 }
 
-header.site {
-  padding: 2.2rem 0 1rem;
-  border-bottom: 1px solid var(--line);
+code,
+kbd {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--code);
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
 }
 
-header.site .kicker {
-  color: var(--brick);
-  font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin: 0 0 0.4rem;
+pre {
+  background: var(--code);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  overflow-x: auto;
 }
 
-header.site h1 {
-  color: var(--navy);
-  font-size: 2.1rem;
-  line-height: 1.15;
-  margin: 0;
-}
-
-header.site .subtitle {
-  margin: 0.4rem 0 0;
-  color: var(--muted);
-}
-
-nav.toc {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem 1rem;
-  padding: 0.8rem 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.95rem;
-}
-
-nav.toc a {
-  text-decoration: none;
-}
-
-nav.toc a:hover {
-  text-decoration: underline;
-}
-
-nav.toc a.journal-link {
-  color: var(--brick);
-  font-weight: 700;
-}
-
-section {
-  padding-top: 1.6rem;
-}
-
-/* Разделы главной сворачиваются; заголовок раздела — сам переключатель. */
-details.section {
-  margin: 0;
-  border-bottom: 1px solid var(--line);
-}
-
-details.section > summary {
-  list-style: none;
-  display: flex;
-  align-items: baseline;
-  gap: 0.55rem;
-  padding: 1rem 0;
-  color: var(--navy);
-}
-
-details.section > summary::-webkit-details-marker {
-  display: none;
-}
-
-details.section > summary::before {
-  content: "›";
-  display: inline-block;
-  width: 0.7em;
-  font-size: 1.5rem;
-  line-height: 1;
-  color: var(--brick);
-  transition: transform 0.15s;
-}
-
-details.section[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-details.section > summary h2 {
-  margin: 0;
-}
-
-details.section > summary:hover h2 {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.2em;
-}
-
-details.section > .body {
-  padding: 0 0 1.4rem;
-}
-
-h2 {
-  color: var(--navy);
-  font-size: 1.45rem;
-  margin: 0 0 0.6rem;
-}
-
-h3 {
-  font-size: 1.1rem;
-  margin: 1.2rem 0 0.4rem;
+pre code {
+  background: none;
+  padding: 0;
 }
 
 p {
   margin: 0 0 0.8rem;
+}
+
+.page {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 0 16px 2rem;
+}
+
+.mono {
+  font-family: var(--mono);
 }
 
 .muted {
@@ -189,11 +172,500 @@ p {
   font-size: 0.88rem;
 }
 
-.note {
-  background: var(--paper);
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------- верх страницы */
+
+.topbar {
+  background: var(--bar);
+  color: var(--bar-ink);
+  font: 12px/1.4 var(--mono);
+}
+
+.topbar .bar {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 9px 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.topbar a:hover {
+  text-decoration: underline;
+}
+
+.topbar .sep,
+.topbar .counts {
+  color: var(--bar-faint);
+}
+
+.topbar .counts {
+  display: none;
+  white-space: nowrap;
+}
+
+header.site {
+  padding: 18px 0 4px;
+}
+
+header.site .kicker {
+  font: 12px/1.4 var(--mono);
+  color: var(--brick);
+  margin: 0 0 4px;
+}
+
+header.site h1 {
+  font-size: 1.65rem;
+  line-height: 1.15;
+  font-weight: 600;
+  margin: 0;
+}
+
+header.site .subtitle {
+  color: var(--muted);
+  margin: 0.35rem 0 0;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.tag-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px 12px;
   border-radius: 6px;
-  padding: 0.8rem 1rem;
-  margin: 0.8rem 0;
+  font: 13px/1.3 var(--mono);
+  text-decoration: none;
+  background: var(--tag-bg);
+  color: var(--tag-ink);
+}
+
+.tag-link.quiet {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+/* ------------------------------------------------------ схема курса */
+
+.route {
+  margin: 14px 0 0;
+}
+
+.route-caption {
+  font: 12px/1.4 var(--mono);
+  color: var(--faint);
+  margin: 0 0 2px;
+}
+
+/* Телефон: станции друг под другом, линия слева. */
+.route-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.route-list li {
+  position: relative;
+}
+
+.route-list li::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 0;
+  bottom: 0;
+  border-left: 5px solid var(--rail);
+}
+
+.route-list li.track-intro::before,
+.route-list li.track-demo::before {
+  left: 16px;
+  border-left: 3px dashed var(--branch);
+}
+
+.route-list li:first-child::before {
+  top: 50%;
+}
+
+.route-list li:last-child::before {
+  bottom: 50%;
+}
+
+.route-list a {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 50px;
+  padding: 13px 10px 13px 44px;
+  border-radius: 8px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.route-list .dot {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 19px;
+  height: 19px;
+  margin-top: -9.5px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 3px solid var(--rail);
+}
+
+.route-list .track-intro .dot,
+.route-list .track-demo .dot {
+  border-color: var(--branch);
+}
+
+.route-list .badge {
+  margin-left: auto;
+  font: 12px/1.3 var(--mono);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.route-list a[aria-current="true"] {
+  background: var(--card);
+}
+
+.route-list a[aria-current="true"] .name {
+  font-weight: 600;
+}
+
+.route-list a[aria-current="true"] .dot {
+  background: var(--brick);
+  border-color: var(--brick);
+}
+
+/* Широкий экран: та же схема картой. */
+.route-map {
+  display: none;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.route-map .rail {
+  stroke: var(--rail);
+}
+
+.route-map .branch {
+  stroke: var(--branch);
+}
+
+.route-map .caption {
+  fill: var(--faint);
+  font: 10.5px var(--mono);
+}
+
+.route-map .station {
+  cursor: pointer;
+}
+
+.route-map .station circle {
+  fill: var(--card);
+  stroke: var(--rail);
+  stroke-width: 3;
+}
+
+.route-map .station.track-intro circle,
+.route-map .station.track-demo circle {
+  stroke: var(--branch);
+}
+
+.route-map .station .name {
+  fill: var(--ink);
+  font: 12.5px var(--sans);
+}
+
+.route-map .station .badge {
+  fill: var(--faint);
+  font: 10.5px var(--mono);
+}
+
+.route-map .station:hover circle {
+  stroke-width: 4.5;
+}
+
+.route-map .station:focus {
+  outline: none;
+}
+
+.route-map .station:focus-visible circle {
+  stroke: var(--focus);
+  stroke-width: 5;
+}
+
+.route-map .station[aria-current="true"] circle {
+  fill: var(--brick);
+  stroke: var(--brick);
+}
+
+.route-map .station[aria-current="true"] .name {
+  font-weight: 600;
+}
+
+.legend {
+  font: 11.5px/1.5 var(--mono);
+  color: var(--faint);
+  margin: 4px 0 0;
+}
+
+.legend .solid,
+.legend .dashed {
+  display: inline-block;
+  width: 22px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.legend .solid {
+  border-top: 4px solid var(--rail);
+}
+
+.legend .dashed {
+  border-top: 3px dashed var(--branch);
+  margin-left: 12px;
+}
+
+/* ---------------------------------------------------- карточка работы */
+
+.work-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 14px 4px;
+  margin: 10px 0 20px;
+  scroll-margin-top: 12px;
+}
+
+.work-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.work-head h2 {
+  font-size: 1.06rem;
+  line-height: 1.3;
+  font-weight: 600;
+  margin: 0;
+}
+
+.work-head .wid {
+  font: 12px var(--mono);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.kwic {
+  font: 13px/1.6 var(--mono);
+  color: var(--faint);
+  margin: 10px 0 6px;
+}
+
+.kwic mark {
+  background: var(--mark-bg);
+  color: var(--mark-ink);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.work-card .about {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0 0 6px;
+}
+
+/* Строки материалов: вся строка — ссылка, под палец. */
+ul.files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ul.files li + li {
+  border-top: 1px solid var(--line);
+}
+
+a.file {
+  display: grid;
+  grid-template-columns: 3.3rem minmax(0, 1fr) auto;
+  grid-template-areas:
+    "chip what go"
+    "chip size go";
+  column-gap: 10px;
+  align-items: center;
+  min-height: 52px;
+  padding: 9px 2px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a.file:hover .go,
+a.file:active .go {
+  text-decoration: underline;
+}
+
+a.file .chip {
+  grid-area: chip;
+  align-self: start;
+  margin-top: 2px;
+}
+
+a.file .what {
+  grid-area: what;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+a.file .what .desc {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+a.file .size {
+  grid-area: size;
+  font: 12px var(--mono);
+  color: var(--faint);
+}
+
+a.file .size:empty {
+  display: none;
+}
+
+a.file .go {
+  grid-area: go;
+  font-size: 0.9rem;
+  color: var(--navy);
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-block;
+  text-align: center;
+  font: 11.5px/1.5 var(--mono);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.chip-ipynb {
+  background: var(--ipynb-bg);
+  color: var(--ipynb-ink);
+}
+
+.chip-pdf {
+  background: var(--pdf-bg);
+  color: var(--pdf-ink);
+}
+
+.chip-web {
+  background: var(--web-bg);
+  color: var(--web-ink);
+}
+
+.chip-zip {
+  background: var(--zip-bg);
+  color: var(--zip-ink);
+}
+
+/* ----------------------------------------------------- разделы-строки */
+
+main.sections {
+  border-bottom: 1px solid var(--line);
+}
+
+details.section {
+  border-top: 1px solid var(--line);
+}
+
+details.section > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 2px;
+  cursor: pointer;
+  font-family: var(--mono);
+}
+
+details.section > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.section > summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  color: var(--brick);
+  transition: transform 0.15s;
+}
+
+details.section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.section .sid {
+  font-size: 13px;
+  color: var(--faint);
+}
+
+details.section > summary h2 {
+  font: 500 15px/1.3 var(--mono);
+  margin: 0;
+  text-transform: lowercase;
+}
+
+details.section .hint {
+  display: none;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--faint);
+  text-align: right;
+}
+
+details.section > .body {
+  padding: 0 2px 18px;
+}
+
+details.section h3 {
+  font: 500 13px/1.4 var(--mono);
+  color: var(--faint);
+  text-transform: lowercase;
+  margin: 16px 0 4px;
 }
 
 .announce {
@@ -204,189 +676,138 @@ p {
 
 .announce li {
   border-left: 3px solid var(--brick);
-  padding: 0.2rem 0 0.2rem 0.8rem;
-  margin-bottom: 0.6rem;
+  padding: 2px 0 2px 10px;
+  margin-bottom: 10px;
 }
 
 .announce .date {
-  color: var(--muted);
-  font-size: 0.88rem;
-  margin-right: 0.5rem;
-}
-
-/* Таблицы: на узком экране прокручивается таблица, а не страница. */
-.table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 0.4rem 0 0.8rem;
-}
-
-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 0.95rem;
-}
-
-th,
-td {
-  text-align: left;
-  vertical-align: top;
-  padding: 0.45rem 0.6rem 0.45rem 0;
-  border-bottom: 1px solid var(--line);
-}
-
-thead th {
-  border-bottom: 2px solid var(--ink);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-td.num,
-th.num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.cards {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 0.6rem;
-}
-
-.cards li {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0.7rem 0.9rem;
-}
-
-.cards .title {
-  font-weight: 600;
-}
-
-.cards .about {
-  margin: 0.15rem 0 0.35rem;
-}
-
-.cards .meta {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.download {
-  display: inline-block;
-  font-weight: 600;
-  text-decoration: none;
-  border: 1px solid var(--navy);
-  border-radius: 5px;
-  padding: 0.15rem 0.6rem;
-  margin-right: 0.5rem;
-}
-
-.download:hover {
-  background: var(--paper);
-}
-
-.kit {
-  border-color: var(--moss);
-}
-
-.kit .download {
-  border-color: var(--moss);
-  color: var(--moss);
-}
-
-code,
-kbd {
-  font-family: Consolas, "DejaVu Sans Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9em;
-  background: var(--paper);
-  border-radius: 4px;
-  padding: 0.05em 0.3em;
-}
-
-pre {
-  background: var(--paper);
-  border-radius: 6px;
-  padding: 0.7rem 0.9rem;
-  overflow-x: auto;
-}
-
-pre code {
-  background: none;
-  padding: 0;
+  display: block;
+  font: 12px var(--mono);
+  color: var(--faint);
 }
 
 dl.contacts {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.3rem 1rem;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 14px;
   margin: 0;
 }
 
 dl.contacts dt {
-  color: var(--muted);
+  font: 13px/1.55 var(--mono);
+  color: var(--faint);
 }
 
 dl.contacts dd {
   margin: 0;
 }
 
-footer.site {
-  margin-top: 2.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 0.85rem;
+/* Расписание: на телефоне каждая неделя — блок, на широком — таблица. */
+table.schedule {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-/* ---------------------------------------------------------------- журнал */
+table.schedule thead {
+  display: none;
+}
+
+table.schedule tr {
+  display: block;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+table.schedule td {
+  display: block;
+  padding: 1px 0;
+}
+
+table.schedule td.wk {
+  font: 13px var(--mono);
+  color: var(--brick);
+}
+
+table.schedule td.wk::before {
+  content: "неделя ";
+}
+
+table.schedule td.task,
+table.schedule td.when {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+table.schedule td:empty {
+  display: none;
+}
+
+table.schedule td[data-label]::before {
+  content: attr(data-label) ": ";
+  font: 12px var(--mono);
+  color: var(--faint);
+}
+
+footer.site {
+  margin-top: 1.6rem;
+  font: 12px/1.6 var(--mono);
+  color: var(--faint);
+}
+
+footer.site a {
+  color: inherit;
+}
+
+/* ------------------------------------------------------------ журнал */
 
 .panel {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 1rem 0;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 14px 0;
 }
 
 .panel h2 {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
 }
 
 .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 8px;
   align-items: center;
 }
 
 label.check {
   display: inline-flex;
-  gap: 0.35rem;
+  gap: 0.4rem;
   align-items: center;
   font-size: 0.92rem;
+  min-height: 36px;
 }
 
 input[type="text"],
 input[type="password"],
 input[type="number"],
 textarea {
-  font: inherit;
+  font: 16px/1.4 var(--sans);
   color: var(--ink);
-  background: var(--bg);
+  background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  min-height: 40px;
+  max-width: 100%;
 }
 
 input.code {
-  font-family: Consolas, "DejaVu Sans Mono", ui-monospace, monospace;
-  letter-spacing: 0.08em;
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  width: 13em;
+  width: 14em;
 }
 
 textarea {
@@ -395,30 +816,20 @@ textarea {
 }
 
 button {
-  font: inherit;
-  font-size: 0.95rem;
+  font: 15px/1.3 var(--sans);
+  min-height: 40px;
   cursor: pointer;
   color: var(--ink);
-  background: var(--bg);
+  background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  padding: 0.35rem 0.85rem;
 }
 
 button.primary {
-  background: var(--navy);
-  border-color: var(--navy);
-  color: #fff;
-}
-
-@media (prefers-color-scheme: dark) {
-  button.primary {
-    color: #12171e;
-  }
-}
-
-button.danger {
-  color: var(--brick);
+  background: var(--tag-bg);
+  border-color: var(--tag-bg);
+  color: var(--tag-ink);
 }
 
 button:disabled {
@@ -429,8 +840,9 @@ button:disabled {
 button.icon {
   border: none;
   background: none;
-  padding: 0 0.2rem;
-  color: var(--muted);
+  min-height: 32px;
+  padding: 0 0.3rem;
+  color: var(--faint);
 }
 
 .status {
@@ -446,15 +858,79 @@ button.icon {
   color: var(--moss);
 }
 
-.codebox {
-  font-family: Consolas, "DejaVu Sans Mono", ui-monospace, monospace;
-  font-size: 1.3rem;
-  letter-spacing: 0.1em;
-  font-weight: 700;
+.note {
+  background: var(--code);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin: 0.8rem 0;
 }
 
-table.journal td.name {
+.codebox {
+  font-family: var(--mono);
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+details {
+  margin: 0.6rem 0;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--navy);
+}
+
+.sheet {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table.journal {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+table.journal th,
+table.journal td {
+  text-align: left;
+  vertical-align: middle;
+  padding: 0.45rem 0.6rem 0.45rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+table.journal thead th {
+  font: 500 12px/1.3 var(--mono);
+  color: var(--faint);
+  text-transform: lowercase;
+  border-bottom: 2px solid var(--ink);
   white-space: nowrap;
+}
+
+table.journal tbody tr:last-child td {
+  border-bottom: none;
+}
+
+table.journal .num {
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* На телефоне ФИО переносится в две строки, чтобы рядом поместились баллы. */
+table.journal td.name {
+  white-space: normal;
+  min-width: 8.5em;
+  max-width: 10.5em;
+  line-height: 1.3;
 }
 
 /* На телефоне баллы прокручиваются, а ФИО остаётся на месте. */
@@ -463,21 +939,23 @@ table.journal thead th:nth-child(2) {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--bg);
+  background: var(--card);
   padding-left: 0.3rem;
 }
 
 table.journal thead th.work {
   white-space: normal;
-  min-width: 4.5em;
+  min-width: 5.6em;
   max-width: 8.5em;
   vertical-align: bottom;
 }
 
 table.journal input[type="number"] {
   width: 3.6em;
+  min-height: 36px;
   text-align: right;
   padding: 0.2rem 0.3rem;
+  font: 16px var(--mono);
 }
 
 table.journal input[aria-invalid="true"] {
@@ -498,14 +976,17 @@ ol.works li {
   margin-bottom: 0.35rem;
 }
 
+/* Поле и три кнопки (↑ ↓ ×) в одну строку даже на узком экране. */
 ol.works input[type="text"] {
-  width: min(20rem, 60vw);
-  margin-right: 0.3rem;
+  width: calc(100% - 128px);
+  max-width: 20rem;
+  margin-right: 0.2rem;
 }
 
 ol.works button.icon {
-  font-size: 1.05rem;
-  padding: 0.1rem 0.35rem;
+  font-size: 1.1rem;
+  min-width: 36px;
+  min-height: 40px;
 }
 
 ol.works li:first-child .up,
@@ -521,41 +1002,109 @@ ol.preview {
 }
 
 ol.preview li.dup {
-  color: var(--muted);
+  color: var(--faint);
   text-decoration: line-through;
 }
 
-details {
-  margin: 0.6rem 0;
+.page > section {
+  padding-top: 0.4rem;
 }
 
-summary {
-  cursor: pointer;
-  color: var(--navy);
+/* ----------------------------------------------------- широкий экран */
+
+@media (min-width: 480px) {
+  .topbar .counts {
+    display: inline;
+  }
+
+  details.section .hint {
+    display: inline;
+  }
 }
 
-[hidden] {
-  display: none !important;
-}
+@media (min-width: 640px) {
+  .page,
+  .topbar .bar {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@media (max-width: 600px) {
-  body {
-    font-size: 16px;
+  header.site {
+    padding-top: 26px;
   }
 
   header.site h1 {
-    font-size: 1.7rem;
+    font-size: 2rem;
+  }
+
+  .route-map {
+    display: block;
+  }
+
+  .route-list {
+    display: none;
+  }
+
+  .work-card {
+    padding: 16px 18px 6px;
+  }
+
+  /* Настоящая строка конкорданса: ключ по центру, контексты по сторонам. */
+  .kwic {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+    align-items: baseline;
+  }
+
+  .kwic .kl {
+    text-align: right;
+  }
+
+  a.file {
+    grid-template-columns: 3.3rem minmax(0, 1fr) 4.5rem auto;
+    grid-template-areas: "chip what size go";
+  }
+
+  a.file .size:empty {
+    display: block;
+  }
+
+  table.schedule thead {
+    display: table-header-group;
+  }
+
+  table.schedule tr {
+    display: table-row;
+  }
+
+  table.schedule th,
+  table.schedule td {
+    display: table-cell;
+    text-align: left;
+    vertical-align: top;
+    padding: 8px 12px 8px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  table.schedule th {
+    font: 500 12px var(--mono);
+    color: var(--faint);
+    text-transform: lowercase;
+    border-top: none;
+  }
+
+  table.schedule td.wk::before,
+  table.schedule td[data-label]::before {
+    content: none;
+  }
+
+  table.schedule td:empty {
+    display: table-cell;
+  }
+
+  table.journal td.name {
+    white-space: nowrap;
+    max-width: none;
   }
 }

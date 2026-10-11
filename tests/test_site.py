@@ -176,9 +176,55 @@ def test_sections_fold_and_only_chosen_ones_are_open(course, index):
     assert {"about", "schedule", "materials", "howto", "journal"} <= set(sections)
     opened = {anchor for anchor, flag in sections.items() if flag}
     assert opened == set(course.get("open_sections", ["materials"])) & set(sections)
-    # Ссылки меню ведут на существующие разделы.
-    for anchor in re.findall(r'<nav class="toc"[^>]*>(.*?)</nav>', index, re.S)[0].split('href="#')[1:]:
-        assert anchor.split('"')[0] in sections
+    # Ссылки на разделы ведут на существующие разделы.
+    for anchor in re.findall(r'href="#(\w+)"', index):
+        assert anchor in sections, anchor
+
+
+def test_route_has_a_station_and_a_card_for_every_work(course, index):
+    slugs = [lab["slug"] for lab in course["labs"]]
+    # Станция есть и на карте (широкий экран), и в списке (телефон).
+    stations = re.findall(r'href="#work-([\w-]+)" data-work="([\w-]+)"', index)
+    assert [slug for slug, _ in stations] == slugs * 2
+    assert all(href == data for href, data in stations)
+    cards = re.findall(r'<section class="work-card" id="work-([\w-]+)"', index)
+    assert cards == slugs
+    # Выбранная по умолчанию работа отмечена на обеих схемах.
+    selected = course.get("current") or slugs[0]
+    assert len(re.findall(rf'data-work="{selected}" [^>]*aria-current="true"', index)) == 2
+    assert f'data-current="{selected}"' in index
+
+
+def test_work_cards_link_their_materials(course, index):
+    for lab in course["labs"]:
+        card = re.search(rf'<section class="work-card" id="work-{lab["slug"]}".*?</section>', index, re.S).group(0)
+        assert f'href="files/labs/{lab["slug"]}.ipynb"' in card
+        if lab.get("lecture"):
+            assert f'href="files/lectures/{lab["lecture"]}.pdf"' in card
+        if lab.get("playground"):
+            assert f'href="{lab["playground"]}"' in card
+        if lab.get("kwic"):
+            assert f"<mark>{lab['kwic'][1]}</mark>" in card
+
+
+def test_route_fields_are_checked(course):
+    broken = dict(course, labs=[dict(course["labs"][0], track="side")] + course["labs"][1:])
+    with pytest.raises(SystemExit, match="track"):
+        build_site.check_route(broken)
+    with pytest.raises(SystemExit, match="current"):
+        build_site.check_route(dict(course, current="lab9"))
+
+
+def test_fonts_are_bundled(dist):
+    css = (dist / "style.css").read_text(encoding="utf-8")
+    fonts = re.findall(r'url\("(fonts/[^"]+)"\)', css)
+    assert len(fonts) == 4
+    for font in fonts:
+        assert (dist / font).stat().st_size > 10_000, font
+    assert (dist / "fonts" / "OFL.txt").is_file()
+    # Ни одного внешнего шрифта или стиля: сайт не зависит от чужих серверов.
+    index = (dist / "index.html").read_text(encoding="utf-8")
+    assert "fonts.googleapis" not in css + index
 
 
 def test_unknown_open_section_is_an_error(course):

@@ -171,12 +171,15 @@ def build_kit(course: dict, target: Path) -> None:
 
 e = html.escape
 URL = re.compile(r"https?://[^\s<>\"«»]+[^\s<>\"«».,;:!?)]")
+TRACKS = ("intro", "main", "demo")
 
 
-def inline(text: str) -> str:
+def inline(text: str, links: bool = True) -> str:
     """Экранировать текст, `код` оформить как код, ссылки сделать ссылками."""
     out = e(text)
     out = re.sub(r"`([^`]+)`", r"<code>\1</code>", out)
+    if not links:
+        return out
     return URL.sub(lambda m: f'<a href="{m.group(0)}">{m.group(0)}</a>', out)
 
 
@@ -185,11 +188,218 @@ def paragraphs(text: str) -> str:
     return "\n".join(f"<p>{inline(block)}</p>" for block in blocks)
 
 
-def download_link(info: dict, label: str = "скачать") -> str:
+def plural(count: int, one: str, few: str, many: str) -> str:
+    if count % 10 == 1 and count % 100 != 11:
+        word = one
+    elif 2 <= count % 10 <= 4 and not 12 <= count % 100 <= 14:
+        word = few
+    else:
+        word = many
+    return f"{count} {word}"
+
+
+def file_row(kind: str, title: str, href: str, size: str = "", download: str = "", desc: str = "") -> str:
+    """Строка материала: метка типа, название, размер, действие. Вся строка — ссылка."""
+    attrs = f' download="{e(download)}"' if download else ""
+    if kind == "web":
+        attrs += ' target="_blank" rel="noopener"'
+    desc_html = f'<span class="desc">{inline(desc, links=False)}</span>' if desc else ""
     return (
-        f'<a class="download" href="{e(info["href"])}" download="{e(info["download"])}">'
-        f"{e(label)}</a><span class=\"meta\">{e(info['size'])}</span>"
+        f'<li><a class="file" href="{e(href)}"{attrs}>'
+        f'<span class="chip chip-{kind}">{kind}</span>'
+        f'<span class="what">{e(title)}{desc_html}</span>'
+        f'<span class="size">{e(size)}</span>'
+        f'<span class="go">{"открыть" if kind == "web" else "скачать"}</span></a></li>'
     )
+
+
+def download_row(kind: str, title: str, info: dict, desc: str = "") -> str:
+    return file_row(kind, title, info["href"], info["size"], info["download"], desc)
+
+
+def check_route(course: dict) -> None:
+    """Поля схемы курса в course.toml: ошибка видна при сборке, а не на сайте."""
+    lectures = {item["slug"] for item in course.get("lectures", [])}
+    playgrounds = {item["url"] for item in course.get("playgrounds", [])}
+    slugs = [lab["slug"] for lab in course["labs"]]
+    problems = []
+    for lab in course["labs"]:
+        where = f"[[labs]] {lab['slug']}"
+        if lab.get("track", "main") not in TRACKS:
+            problems.append(f"{where}: track должен быть одним из {TRACKS}")
+        if lab.get("lecture") and lab["lecture"] not in lectures:
+            problems.append(f"{where}: нет лекции со slug {lab['lecture']!r}")
+        if lab.get("playground") and lab["playground"] not in playgrounds:
+            problems.append(f"{where}: площадки {lab['playground']!r} нет в [[playgrounds]]")
+        kwic = lab.get("kwic")
+        if kwic is not None and (len(kwic) != 3 or not all(isinstance(part, str) for part in kwic)):
+            problems.append(f"{where}: kwic — три строки: левый контекст, ключ, правый контекст")
+    if course.get("current") and course["current"] not in slugs:
+        problems.append(f"current = {course['current']!r}: такой работы нет")
+    if problems:
+        raise SystemExit("course.toml:\n  " + "\n  ".join(problems))
+
+
+def selected_work(course: dict) -> str:
+    return course.get("current") or course["labs"][0]["slug"]
+
+
+def station_name(lab: dict) -> str:
+    return lab.get("journal") or lab["title"]
+
+
+def route_svg(labs: list[dict], selected: str) -> str:
+    """Схема для широкого экрана: конвейер — сплошная линия, ответвления — пунктир."""
+    count = len(labs)
+    left, right, main_y, branch_y = 64, 576, 88, 46
+    xs = [left + index * (right - left) / max(count - 1, 1) for index in range(count)]
+    tracks = [lab.get("track", "main") for lab in labs]
+    ys = [branch_y if track == "intro" else main_y for track in tracks]
+
+    lines = []
+    for index in range(count - 1):
+        x1, y1, x2, y2 = xs[index], ys[index], xs[index + 1], ys[index + 1]
+        if tracks[index] == tracks[index + 1] == "main":
+            lines.append(f'<line class="rail" x1="{x1:.0f}" y1="{y1}" x2="{x2:.0f}" y2="{y2}" stroke-width="7" stroke-linecap="round"/>')
+        else:
+            middle = (x1 + x2) / 2
+            lines.append(
+                f'<path class="branch" d="M{x1:.0f} {y1} C {middle:.0f} {y1} {middle:.0f} {y2} {x2:.0f} {y2}" '
+                'stroke-width="5" fill="none" stroke-dasharray="2 8" stroke-linecap="round"/>'
+            )
+
+    # Подписи соседних станций основной линии не помещаются рядом, поэтому
+    # чередуются: под линией, над линией, под линией...
+    stations = []
+    main_seen = 0
+    for lab, x, y, track in zip(labs, xs, ys, tracks):
+        radius = 11 if track == "main" else 9
+        name, badge = e(station_name(lab)), e(lab.get("badge", ""))
+        below = track == "main" and main_seen % 2 == 0
+        if track == "main":
+            main_seen += 1
+        if below:
+            labels = (
+                f'<text class="name" x="{x:.0f}" y="{y + 28}" text-anchor="middle">{name}</text>'
+                f'<text class="badge" x="{x:.0f}" y="{y + 43}" text-anchor="middle">{badge}</text>'
+            )
+        elif track == "intro":
+            labels = (
+                f'<text class="name" x="{x:.0f}" y="{y - 20}" text-anchor="middle">{name}</text>'
+                f'<text class="badge" x="{x:.0f}" y="{y + 26}" text-anchor="middle">{badge}</text>'
+            )
+        else:
+            labels = (
+                f'<text class="name" x="{x:.0f}" y="{y - 20}" text-anchor="middle">{name}</text>'
+                f'<text class="badge" x="{x:.0f}" y="{y + 30}" text-anchor="middle">{badge}</text>'
+            )
+        current = ' aria-current="true"' if lab["slug"] == selected else ""
+        stations.append(
+            f'<a class="station track-{track}" href="#work-{e(lab["slug"])}" data-work="{e(lab["slug"])}"'
+            f' aria-label="{e(lab["title"])}"{current}>'
+            f'<circle cx="{x:.0f}" cy="{y}" r="{radius}"/>{labels}</a>'
+        )
+    return (
+        '<svg class="route-map" viewBox="0 0 640 140" role="group" aria-label="Схема курса">'
+        + "".join(lines)
+        + "".join(stations)
+        + "</svg>"
+    )
+
+
+def route_list(labs: list[dict], selected: str) -> str:
+    """Та же схема для телефона: станции сверху вниз."""
+    items = []
+    for lab in labs:
+        current = ' aria-current="true"' if lab["slug"] == selected else ""
+        items.append(
+            f'<li class="track-{lab.get("track", "main")}"><a href="#work-{e(lab["slug"])}" data-work="{e(lab["slug"])}"{current}>'
+            f'<span class="dot"></span><span class="name">{e(station_name(lab))}</span>'
+            f'<span class="badge">{e(lab.get("badge", ""))}</span></a></li>'
+        )
+    return f'<ol class="route-list">{"".join(items)}</ol>'
+
+
+def work_panel(index: int, lab: dict, course: dict, files: dict[str, dict]) -> str:
+    slug = lab["slug"]
+    rows = [download_row("ipynb", "Ноутбук", files[f"labs:{slug}"])]
+    if lab.get("lecture"):
+        lecture = next(item for item in course["lectures"] if item["slug"] == lab["lecture"])
+        title = "Лекция к работе" if lecture["title"].startswith("К ") else f"Лекция «{lecture['title']}»"
+        rows.append(download_row("pdf", title, files[f"lectures:{lecture['slug']}"]))
+    if lab.get("playground"):
+        playground = next(item for item in course["playgrounds"] if item["url"] == lab["playground"])
+        rows.append(file_row("web", f"Интерактивная страница «{playground['title']}»", playground["url"]))
+    kwic = ""
+    if lab.get("kwic"):
+        left, key, right = lab["kwic"]
+        # Пробелы нужны строке на телефоне; в сетке широкого экрана они не видны.
+        before = "" if left.endswith(("(", "«")) else " "
+        after = "" if right.startswith((",", ".", ":", ";", "!", "?", ")", "»")) else " "
+        kwic = (
+            f'<p class="kwic"><span class="kl">{e(left)}</span>{before}<mark>{e(key)}</mark>'
+            f'{after}<span class="kr">{e(right)}</span></p>'
+        )
+    return (
+        f'<section class="work-card" id="work-{e(slug)}" aria-labelledby="work-{e(slug)}-title">'
+        f'<div class="work-head"><h2 id="work-{e(slug)}-title">{e(lab["title"])}</h2>'
+        f'<span class="wid">{e(lab.get("badge", ""))}</span></div>'
+        f"{kwic}"
+        f'<p class="about">{inline(lab.get("about", ""))}</p>'
+        f'<ul class="files">{"".join(rows)}</ul></section>'
+    )
+
+
+# Выбор работы на схеме. Стоит сразу после карточек, чтобы лишние скрылись
+# до первой отрисовки; без JavaScript видны все карточки подряд.
+SELECT_WORK = """<script>
+(function () {
+  var panels = document.querySelectorAll(".work-card");
+  var stations = document.querySelectorAll(".route [data-work]");
+  function select(slug, scroll) {
+    var panel = document.getElementById("work-" + slug);
+    if (!panel) return false;
+    panels.forEach(function (item) { item.hidden = item !== panel; });
+    stations.forEach(function (link) {
+      if (link.getAttribute("data-work") === slug) link.setAttribute("aria-current", "true");
+      else link.removeAttribute("aria-current");
+    });
+    if (scroll && panel.getBoundingClientRect().top > window.innerHeight * 0.55) {
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    return true;
+  }
+  stations.forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      var slug = link.getAttribute("data-work");
+      select(slug, true);
+      history.replaceState(null, "", "#work-" + slug);
+    });
+  });
+  window.addEventListener("hashchange", function () {
+    if (location.hash.indexOf("#work-") === 0) select(location.hash.slice(6), true);
+  });
+  var fromHash = location.hash.indexOf("#work-") === 0 && select(location.hash.slice(6), false);
+  if (!fromHash) select(document.querySelector(".route").getAttribute("data-current"), false);
+})();
+</script>"""
+
+# Ссылка на свёрнутый раздел (из текста или по адресу с #) раскрывает его.
+OPEN_ON_LINK = """<script>
+(function () {
+  function open(hash) {
+    var target = hash && document.getElementById(decodeURIComponent(hash.slice(1)));
+    if (target && target.tagName === "DETAILS") target.open = true;
+  }
+  document.addEventListener("click", function (event) {
+    var link = event.target.closest && event.target.closest('a[href^="#"]');
+    if (link) open(link.hash);
+  });
+  window.addEventListener("hashchange", function () { open(location.hash); });
+  open(location.hash);
+})();
+</script>"""
 
 
 def section_announcements(course: dict) -> str:
@@ -197,8 +407,7 @@ def section_announcements(course: dict) -> str:
     if not items:
         return ""
     lis = "\n".join(
-        f'<li><span class="date">{e(item.get("date", ""))}</span>{inline(item["text"])}</li>'
-        for item in items
+        f'<li><span class="date">{e(item.get("date", ""))}</span>{inline(item["text"])}</li>' for item in items
     )
     return f'<ul class="announce">{lis}</ul>'
 
@@ -213,53 +422,42 @@ def section_schedule(course: dict) -> str:
         return ""
     with_date = any(row.get("date") for row in rows)
     with_deadline = any(row.get("deadline") for row in rows)
-    head = ["неделя", "тема", "работа"]
-    if with_date:
-        head.append("даты")
-    if with_deadline:
-        head.append("срок сдачи")
+    head = ["неделя", "тема", "работа"] + (["даты"] if with_date else []) + (["срок сдачи"] if with_deadline else [])
     body = []
     for row in rows:
-        cells = [e(row.get("weeks", "")), inline(row.get("topic", "")), e(row.get("work", ""))]
+        cells = [
+            f'<td class="wk">{e(row.get("weeks", ""))}</td>',
+            f'<td>{inline(row.get("topic", ""))}</td>',
+            f'<td class="task">{e(row.get("work", ""))}</td>',
+        ]
         if with_date:
-            cells.append(e(row.get("date", "")))
+            cells.append(f'<td class="when" data-label="даты">{e(row.get("date", ""))}</td>')
         if with_deadline:
-            cells.append(e(row.get("deadline", "")))
-        body.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in cells) + "</tr>")
+            cells.append(f'<td class="when" data-label="срок">{e(row.get("deadline", ""))}</td>')
+        body.append(f"<tr>{''.join(cells)}</tr>")
     thead = "".join(f"<th>{e(cell)}</th>" for cell in head)
-    return (
-        f'<div class="table-wrap"><table><thead><tr>{thead}</tr></thead>'
-        f'<tbody>{"".join(body)}</tbody></table></div>'
-    )
+    return f'<table class="schedule"><thead><tr>{thead}</tr></thead><tbody>{"".join(body)}</tbody></table>'
 
 
 def section_materials(course: dict, files: dict[str, dict]) -> str:
-    kit = files["kit"]
-    kit_card = (
-        '<ul class="cards"><li class="kit">'
-        '<div class="title">Комплект для лабораторных</div>'
-        '<p class="about">Все ноутбуки, папка <code>data/</code> с корпусом и '
-        "<code>requirements.txt</code> в одном архиве. Распакуйте и открывайте "
-        "ноутбуки из этой папки — пути к данным в них относительные.</p>"
-        f"{download_link(kit, 'скачать архив')}</li></ul>"
+    kit = download_row(
+        "zip",
+        "Комплект для лабораторных",
+        files["kit"],
+        "Все ноутбуки, папка `data/` с корпусом и `requirements.txt`. Распакуйте и открывайте "
+        "ноутбуки из этой папки — пути к данным в них относительные.",
     )
-    labs = "\n".join(
-        f'<li><div class="title">{e(lab["title"])}</div>'
-        f'<p class="about">{inline(lab.get("about", ""))}</p>'
-        f'{download_link(files["labs:" + lab["slug"]], "ноутбук .ipynb")}</li>'
-        for lab in course.get("labs", [])
+    labs = "".join(
+        download_row("ipynb", lab["title"], files["labs:" + lab["slug"]]) for lab in course.get("labs", [])
     )
-    lectures = "\n".join(
-        f'<li><div class="title">{e(item["title"])}</div>'
-        f'<p class="about">{inline(item.get("about", ""))}</p>'
-        f'{download_link(files["lectures:" + item["slug"]], "PDF")}</li>'
+    lectures = "".join(
+        download_row("pdf", item["title"], files["lectures:" + item["slug"]], item.get("about", ""))
         for item in course.get("lectures", [])
     )
     return (
-        f"<h3>Лабораторные работы</h3>{kit_card}"
-        '<p class="muted small" style="margin-top:0.6rem">По отдельности:</p>'
-        f'<ul class="cards">{labs}</ul>'
-        f'<h3>Лекции</h3><ul class="cards">{lectures}</ul>'
+        f'<ul class="files">{kit}</ul>'
+        f'<h3>ноутбуки по отдельности</h3><ul class="files">{labs}</ul>'
+        f'<h3>лекции</h3><ul class="files">{lectures}</ul>'
     )
 
 
@@ -267,17 +465,14 @@ def section_playgrounds(course: dict) -> str:
     items = course.get("playgrounds") or []
     if not items:
         return ""
-    lis = "\n".join(
-        f'<li><div class="title"><a href="{e(item["url"])}">{e(item["title"])}</a></div>'
-        f'<p class="about">{inline(item.get("about", ""))}</p>'
-        f'<div class="meta">{e(item.get("work", ""))}</div></li>'
+    rows = "".join(
+        file_row("web", item["title"], item["url"], desc=f"{item.get('about', '')} {item.get('work', '')}".strip())
         for item in items
     )
     return (
-        "<p>Те же числа на том же корпусе, что и в лабораторных, но параметры "
-        "можно крутить. Работают прямо в браузере, ставить ничего не нужно; "
-        "первая загрузка занимает до минуты.</p>"
-        f'<ul class="cards">{lis}</ul>'
+        '<p class="muted small">Те же числа на том же корпусе, что и в лабораторных, но параметры '
+        "можно крутить. Работают в браузере, ставить ничего не нужно; первая загрузка — до минуты.</p>"
+        f'<ul class="files">{rows}</ul>'
     )
 
 
@@ -304,7 +499,7 @@ def section_literature(course: dict) -> str:
     if not items:
         return ""
     lis = "\n".join(
-        f'<li>{inline(item["text"])}'
+        f"<li>{inline(item['text'])}"
         + (f' <a href="{e(item["url"])}">{e(item["url"])}</a>' if item.get("url") else "")
         + "</li>"
         for item in items
@@ -344,31 +539,15 @@ def section_journal() -> str:
     return (
         "<p>Баллы за сданные работы. Журнал открывается по коду группы, "
         "который сообщает преподаватель.</p>"
-        '<p><a class="download" href="journal/">Открыть журнал</a></p>'
+        '<p><a class="tag-link" href="journal/">открыть журнал →</a></p>'
     )
 
 
-# Ссылка на свёрнутый раздел (из меню или по адресу с #) раскрывает его.
-OPEN_ON_LINK = """<script>
-(function () {
-  function open(hash) {
-    var target = hash && document.getElementById(decodeURIComponent(hash.slice(1)));
-    if (target && target.tagName === "DETAILS") target.open = true;
-  }
-  document.addEventListener("click", function (event) {
-    var link = event.target.closest && event.target.closest('a[href^="#"]');
-    if (link) open(link.hash);
-  });
-  window.addEventListener("hashchange", function () { open(location.hash); });
-  open(location.hash);
-})();
-</script>"""
-
-
-def section_block(anchor: str, heading: str, body: str, is_open: bool) -> str:
+def section_block(index: int, anchor: str, heading: str, body: str, hint: str, is_open: bool) -> str:
+    hint_html = f'<span class="hint">{hint}</span>' if hint else ""
     return (
         f'<details class="section" id="{anchor}"{" open" if is_open else ""}>'
-        f"<summary><h2>{e(heading)}</h2></summary>"
+        f'<summary><span class="sid">s{index:02d}</span><h2>{e(heading)}</h2>{hint_html}</summary>'
         f'<div class="body">{body}</div></details>'
     )
 
@@ -383,58 +562,78 @@ def render_index(course: dict, files: dict[str, dict]) -> str:
     unknown = opened - set(SECTION_ANCHORS)
     if unknown:
         raise SystemExit(f"open_sections в course.toml: неизвестные разделы {sorted(unknown)}")
-    # (якорь, пункт меню, заголовок раздела, содержимое)
+    check_route(course)
+    labs = course["labs"]
+    selected = selected_work(course)
+    kit_size = files["kit"]["size"]
     sections = [
-        ("news", "Объявления", "Объявления", section_announcements(course)),
-        ("about", "О курсе", "О курсе", section_about(course)),
-        ("schedule", "Расписание", "Расписание", section_schedule(course)),
-        ("materials", "Материалы", "Материалы", section_materials(course, files)),
-        ("playgrounds", "Интерактивные страницы", "Интерактивные страницы", section_playgrounds(course)),
-        ("howto", "Как запустить", "Как запустить ноутбуки", section_howto()),
-        ("literature", "Литература", "Литература", section_literature(course)),
-        ("contacts", "Контакты", "Контакты", section_contacts(course)),
-        ("journal", "Журнал", "Журнал группы", section_journal()),
+        ("news", "Объявления", section_announcements(course), ""),
+        ("about", "О курсе", section_about(course), ""),
+        ("schedule", "Расписание", section_schedule(course), ""),
+        ("materials", "Все материалы", section_materials(course, files), f"комплект .zip · {e(kit_size)}"),
+        ("playgrounds", "Интерактивные страницы", section_playgrounds(course), ""),
+        ("howto", "Как запустить ноутбуки", section_howto(), ""),
+        ("literature", "Литература", section_literature(course), ""),
+        ("contacts", "Контакты", section_contacts(course), ""),
+        ("journal", "Журнал группы", section_journal(), '<span class="chip chip-zip">по коду</span>'),
     ]
     assert tuple(anchor for anchor, *_ in sections) == SECTION_ANCHORS
-    present = [section for section in sections if section[3]]
-    nav = " ".join(
-        f'<a href="#{anchor}" class="journal-link">{e(title)}</a>'
-        if anchor == "journal"
-        else f'<a href="#{anchor}">{e(title)}</a>'
-        for anchor, title, _, _ in present
-    )
+    present = [section for section in sections if section[2]]
     blocks = "\n".join(
-        section_block(anchor, heading, body, anchor in opened) for anchor, _, heading, body in present
+        section_block(index, anchor, heading, body, hint, anchor in opened)
+        for index, (anchor, heading, body, hint) in enumerate(present, start=1)
+    )
+    panels = "\n".join(work_panel(index, lab, course, files) for index, lab in enumerate(labs))
+    counts = " · ".join(
+        (
+            plural(len(labs), "работа", "работы", "работ"),
+            plural(len(course.get("lectures", [])), "лекция", "лекции", "лекций"),
+            plural(len(course.get("playgrounds", [])), "площадка", "площадки", "площадок"),
+        )
     )
     subtitle = course.get("subtitle", "")
     if course.get("semester"):
         subtitle = f"{subtitle} · {course['semester']}" if subtitle else course["semester"]
     updated = dt.datetime.now(MOSCOW).strftime("%d.%m.%Y")
     title = course["title"]
+    css = version(SITE / "style.css")
     return f"""<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{e(title)} — материалы курса</title>
 <meta name="description" content="{e(title)}: лекции, лабораторные работы, расписание и журнал группы.">
-<link rel="stylesheet" href="style.css?v={version(SITE / 'style.css')}">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%232b4c6f'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif'%3EML%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#1d2430">
+<link rel="preload" href="fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css?v={css}">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%231d2430'/%3E%3Ccircle cx='30' cy='50' r='11' fill='none' stroke='%23c9d1dc' stroke-width='6'/%3E%3Ccircle cx='70' cy='50' r='11' fill='%23e58a7c'/%3E%3Cpath d='M41 50h18' stroke='%238fb3d9' stroke-width='8'/%3E%3C/svg%3E">
 </head>
 <body>
+<div class="topbar"><div class="bar"><span><a href="{REPO_URL}">basic-linguistic-ml</a> <span class="sep">›</span> курс</span><span class="counts">{e(counts)}</span></div></div>
 <div class="page">
 <header class="site">
-<p class="kicker">Материалы курса</p>
+<p class="kicker">{e(subtitle)}</p>
 <h1>{e(title)}</h1>
-<p class="subtitle">{e(subtitle)}</p>
+<p class="tags"><a class="tag-link" href="journal/">журнал группы →</a><a class="tag-link quiet" href="#materials">все материалы ↓</a></p>
 </header>
-<nav class="toc" aria-label="Разделы">{nav}</nav>
-<main>
+<nav class="route" aria-label="Работы курса" data-current="{e(selected)}">
+<p class="route-caption">маршрут курса · выберите работу</p>
+{route_svg(labs, selected)}
+{route_list(labs, selected)}
+<p class="legend"><span class="solid"></span>конвейер локализации<span class="dashed"></span>вводная и демо</p>
+</nav>
+<div class="works">
+{panels}
+</div>
+{SELECT_WORK}
+<main class="sections">
 {blocks}
 </main>
 <footer class="site">
-Обновлено {updated}. Исходники материалов и история изменений —
-<a href="{REPO_URL}">на GitHub</a>.
+обновлено {updated} · исходники и история изменений — <a href="{REPO_URL}">GitHub</a> ·
+шрифты IBM Plex (<a href="fonts/OFL.txt">OFL</a>)
 </footer>
 </div>
 {OPEN_ON_LINK}
@@ -480,6 +679,7 @@ def build(out: Path, journal: Path | None = None) -> None:
     files = copy_materials(course, out)
     (out / "index.html").write_text(render_index(course, files), encoding="utf-8")
     shutil.copyfile(SITE / "style.css", out / "style.css")
+    shutil.copytree(SITE / "fonts", out / "fonts")
     shutil.copytree(SITE / "journal", out / "journal")
     stamp_journal_page(out / "journal" / "index.html", course)
     if journal is not None and journal.is_file() and journal.stat().st_size > 0:
