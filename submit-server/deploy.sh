@@ -52,14 +52,19 @@ echo "3/5 Контейнер mlg-submit"
 mkdir -p "$HERE/data"
 chown 1000:1000 "$HERE/data"
 docker compose up -d --build mlg-submit
-status=none
+# Спрашиваем сам сервис: статус здоровья Docker появляется только после
+# первой проверки, а она бывает не сразу.
+ready=no
 for _ in $(seq 1 30); do
-    status=$(docker inspect -f '{{.State.Health.Status}}' mlg-submit 2>/dev/null || echo none)
-    [ "$status" = healthy ] && break
+    if docker exec mlg-submit python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8095/health', timeout=3)" 2>/dev/null; then
+        ready=yes
+        break
+    fi
     sleep 2
 done
-if [ "$status" != healthy ]; then
-    echo "    контейнер не поднялся ($status): docker logs mlg-submit"
+if [ "$ready" != yes ]; then
+    echo "    сервис не отвечает. Состояние: $(docker inspect -f '{{.State.Status}}' mlg-submit 2>/dev/null)"
+    docker logs --tail 20 mlg-submit || true
     exit 1
 fi
 echo "    работает"

@@ -14,7 +14,7 @@ COPY server.py .
 USER nobody
 EXPOSE 8095
 
-HEALTHCHECK --interval=60s --timeout=5s --retries=3 \
+HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8095/health', timeout=4)"
 
 CMD ["python", "server.py"]
