@@ -58,8 +58,9 @@ KIT_README = """\
    Версии в requirements.txt проверены: на них все работы выполняются
    сверху вниз без ошибок. TensorFlow нужен только Л.р. № 4; если ставить
    его не хочется, удалите строку tensorflow из requirements.txt.
-3. Л.р. № 1, раздел 13, при первом запуске скачивает корпус 20 Newsgroups
-   (около 14 МБ), нужен интернет.
+3. Нужен интернет: вводная Л.р. «Классификация» загружает наборы iris и
+   penguins через seaborn, а «Классификация текстов» в разделе 13 при первом
+   запуске скачивает корпус 20 Newsgroups (около 14 МБ).
 4. Л.р. № 4 удобнее всего выполнять в Google Colab со средой выполнения GPU.
 
 Сайт курса: https://konkin-nikita.ru/basic-linguistic-ml/
@@ -199,11 +200,11 @@ def section_announcements(course: dict) -> str:
         f'<li><span class="date">{e(item.get("date", ""))}</span>{inline(item["text"])}</li>'
         for item in items
     )
-    return f'<section id="news"><h2>Объявления</h2><ul class="announce">{lis}</ul></section>'
+    return f'<ul class="announce">{lis}</ul>'
 
 
 def section_about(course: dict) -> str:
-    return f'<section id="about"><h2>О курсе</h2>{paragraphs(course.get("about", ""))}</section>'
+    return paragraphs(course.get("about", ""))
 
 
 def section_schedule(course: dict) -> str:
@@ -227,9 +228,8 @@ def section_schedule(course: dict) -> str:
         body.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in cells) + "</tr>")
     thead = "".join(f"<th>{e(cell)}</th>" for cell in head)
     return (
-        '<section id="schedule"><h2>Расписание</h2>'
         f'<div class="table-wrap"><table><thead><tr>{thead}</tr></thead>'
-        f'<tbody>{"".join(body)}</tbody></table></div></section>'
+        f'<tbody>{"".join(body)}</tbody></table></div>'
     )
 
 
@@ -256,11 +256,10 @@ def section_materials(course: dict, files: dict[str, dict]) -> str:
         for item in course.get("lectures", [])
     )
     return (
-        '<section id="materials"><h2>Материалы</h2>'
         f"<h3>Лабораторные работы</h3>{kit_card}"
         '<p class="muted small" style="margin-top:0.6rem">По отдельности:</p>'
         f'<ul class="cards">{labs}</ul>'
-        f'<h3>Лекции</h3><ul class="cards">{lectures}</ul></section>'
+        f'<h3>Лекции</h3><ul class="cards">{lectures}</ul>'
     )
 
 
@@ -275,17 +274,15 @@ def section_playgrounds(course: dict) -> str:
         for item in items
     )
     return (
-        '<section id="playgrounds"><h2>Интерактивные страницы</h2>'
         "<p>Те же числа на том же корпусе, что и в лабораторных, но параметры "
         "можно крутить. Работают прямо в браузере, ставить ничего не нужно; "
         "первая загрузка занимает до минуты.</p>"
-        f'<ul class="cards">{lis}</ul></section>'
+        f'<ul class="cards">{lis}</ul>'
     )
 
 
 def section_howto() -> str:
-    return """<section id="howto"><h2>Как запустить ноутбуки</h2>
-<ol>
+    return """<ol>
 <li>Скачайте <a href="#materials">комплект для лабораторных</a> и распакуйте.
 Открывайте ноутбуки из распакованной папки: пути к данным в них относительные.</li>
 <li>Нужен Python 3.12 и библиотеки из <code>requirements.txt</code>:
@@ -293,12 +290,13 @@ def section_howto() -> str:
 Версии в файле проверены: на них все работы выполняются сверху вниз без
 ошибок. TensorFlow нужен только Л.р. № 4 — если ставить его не хочется,
 удалите строку <code>tensorflow</code> из <code>requirements.txt</code>.</li>
-<li>Л.р. № 1, раздел 13, при первом запуске скачивает корпус 20 Newsgroups
-(около 14 МБ) — нужен интернет.</li>
+<li>Нужен интернет: вводная «Классификация» загружает наборы iris и penguins
+через seaborn, а «Классификация текстов» в разделе 13 при первом запуске
+скачивает корпус 20 Newsgroups (около 14 МБ).</li>
 <li>Л.р. № 4 удобнее всего выполнять в
 <a href="https://colab.research.google.com/">Google Colab</a>: «Файл →
 Загрузить блокнот», затем «Среда выполнения → Сменить среду → GPU».</li>
-</ol></section>"""
+</ol>"""
 
 
 def section_literature(course: dict) -> str:
@@ -311,7 +309,7 @@ def section_literature(course: dict) -> str:
         + "</li>"
         for item in items
     )
-    return f'<section id="literature"><h2>Литература</h2><ul>{lis}</ul></section>'
+    return f"<ul>{lis}</ul>"
 
 
 CONTACT_LABELS = (
@@ -339,36 +337,74 @@ def section_contacts(course: dict) -> str:
     ]
     if not rows:
         return ""
-    return f'<section id="contacts"><h2>Контакты</h2><dl class="contacts">{"".join(rows)}</dl></section>'
+    return f'<dl class="contacts">{"".join(rows)}</dl>'
 
 
 def section_journal() -> str:
     return (
-        '<section id="journal"><h2>Журнал группы</h2>'
         "<p>Баллы за сданные работы. Журнал открывается по коду группы, "
         "который сообщает преподаватель.</p>"
-        '<p><a class="download" href="journal/">Открыть журнал</a></p></section>'
+        '<p><a class="download" href="journal/">Открыть журнал</a></p>'
     )
 
 
+# Ссылка на свёрнутый раздел (из меню или по адресу с #) раскрывает его.
+OPEN_ON_LINK = """<script>
+(function () {
+  function open(hash) {
+    var target = hash && document.getElementById(decodeURIComponent(hash.slice(1)));
+    if (target && target.tagName === "DETAILS") target.open = true;
+  }
+  document.addEventListener("click", function (event) {
+    var link = event.target.closest && event.target.closest('a[href^="#"]');
+    if (link) open(link.hash);
+  });
+  window.addEventListener("hashchange", function () { open(location.hash); });
+  open(location.hash);
+})();
+</script>"""
+
+
+def section_block(anchor: str, heading: str, body: str, is_open: bool) -> str:
+    return (
+        f'<details class="section" id="{anchor}"{" open" if is_open else ""}>'
+        f"<summary><h2>{e(heading)}</h2></summary>"
+        f'<div class="body">{body}</div></details>'
+    )
+
+
+SECTION_ANCHORS = (
+    "news", "about", "schedule", "materials", "playgrounds", "howto", "literature", "contacts", "journal",
+)
+
+
 def render_index(course: dict, files: dict[str, dict]) -> str:
+    opened = set(course.get("open_sections", ["materials"]))
+    unknown = opened - set(SECTION_ANCHORS)
+    if unknown:
+        raise SystemExit(f"open_sections в course.toml: неизвестные разделы {sorted(unknown)}")
+    # (якорь, пункт меню, заголовок раздела, содержимое)
     sections = [
-        ("news", "Объявления", section_announcements(course)),
-        ("about", "О курсе", section_about(course)),
-        ("schedule", "Расписание", section_schedule(course)),
-        ("materials", "Материалы", section_materials(course, files)),
-        ("playgrounds", "Интерактивные страницы", section_playgrounds(course)),
-        ("howto", "Как запустить", section_howto()),
-        ("literature", "Литература", section_literature(course)),
-        ("contacts", "Контакты", section_contacts(course)),
-        ("journal", "Журнал", section_journal()),
+        ("news", "Объявления", "Объявления", section_announcements(course)),
+        ("about", "О курсе", "О курсе", section_about(course)),
+        ("schedule", "Расписание", "Расписание", section_schedule(course)),
+        ("materials", "Материалы", "Материалы", section_materials(course, files)),
+        ("playgrounds", "Интерактивные страницы", "Интерактивные страницы", section_playgrounds(course)),
+        ("howto", "Как запустить", "Как запустить ноутбуки", section_howto()),
+        ("literature", "Литература", "Литература", section_literature(course)),
+        ("contacts", "Контакты", "Контакты", section_contacts(course)),
+        ("journal", "Журнал", "Журнал группы", section_journal()),
     ]
-    present = [(anchor, title, body) for anchor, title, body in sections if body]
+    assert tuple(anchor for anchor, *_ in sections) == SECTION_ANCHORS
+    present = [section for section in sections if section[3]]
     nav = " ".join(
         f'<a href="#{anchor}" class="journal-link">{e(title)}</a>'
         if anchor == "journal"
         else f'<a href="#{anchor}">{e(title)}</a>'
-        for anchor, title, _ in present
+        for anchor, title, _, _ in present
+    )
+    blocks = "\n".join(
+        section_block(anchor, heading, body, anchor in opened) for anchor, _, heading, body in present
     )
     subtitle = course.get("subtitle", "")
     if course.get("semester"):
@@ -394,13 +430,14 @@ def render_index(course: dict, files: dict[str, dict]) -> str:
 </header>
 <nav class="toc" aria-label="Разделы">{nav}</nav>
 <main>
-{chr(10).join(body for _, _, body in present)}
+{blocks}
 </main>
 <footer class="site">
 Обновлено {updated}. Исходники материалов и история изменений —
 <a href="{REPO_URL}">на GitHub</a>.
 </footer>
 </div>
+{OPEN_ON_LINK}
 </body>
 </html>
 """
@@ -414,9 +451,16 @@ def load_course() -> dict:
         return tomllib.load(handle)
 
 
-def stamp_journal_page(page: Path) -> None:
+def journal_works(course: dict) -> list[str]:
+    """Названия столбцов журнала: поле journal у каждой работы, иначе title."""
+    return [lab.get("journal") or lab["title"] for lab in course["labs"]]
+
+
+def stamp_journal_page(page: Path, course: dict) -> None:
     text = page.read_text(encoding="utf-8")
+    options = "".join(f'<option value="{e(name)}"></option>' for name in journal_works(course))
     for old, new in (
+        ("<!-- course-works -->", options),
         ('href="../style.css"', f'href="../style.css?v={version(SITE / "style.css")}"'),
         ('src="journal.js"', f'src="journal.js?v={version(SITE / "journal" / "journal.js")}"'),
     ):
@@ -437,7 +481,7 @@ def build(out: Path, journal: Path | None = None) -> None:
     (out / "index.html").write_text(render_index(course, files), encoding="utf-8")
     shutil.copyfile(SITE / "style.css", out / "style.css")
     shutil.copytree(SITE / "journal", out / "journal")
-    stamp_journal_page(out / "journal" / "index.html")
+    stamp_journal_page(out / "journal" / "index.html", course)
     if journal is not None and journal.is_file() and journal.stat().st_size > 0:
         shutil.copyfile(journal, out / "journal" / "journal.json")
     # Сборка уже готовая: Jekyll на Pages ей не нужен.

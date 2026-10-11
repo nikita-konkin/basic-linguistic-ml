@@ -28,7 +28,8 @@
   const ITERATIONS = 600000;
   const MIN_PASSWORD = 12;
   const MAX_SCORE = 10;
-  const DEFAULT_WORKS = ["Л.р. № 1", "Л.р. № 2", "Л.р. № 3"];
+  // На случай, если страница открыта без сборки и списка работ курса в ней нет.
+  const FALLBACK_WORKS = ["Л.р. № 1", "Л.р. № 2", "Л.р. № 3"];
 
   // Без 0/O, 1/I/L: код диктуют и переписывают с доски.
   const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -233,21 +234,13 @@
     const teacher = state.mode === "teacher";
     const table = $("journal-table");
     table.replaceChildren();
+    // Поля пересоздаются из данных, недопустимый ввод в них не переносится.
+    state.invalid.clear();
 
     const head = document.createElement("thead");
     const headRow = document.createElement("tr");
     headRow.append(cell("th", "№", "num"), cell("th", "ФИО"));
-    data.works.forEach((work, index) => {
-      const th = cell("th", null, "num");
-      th.append(document.createTextNode(work));
-      if (teacher) {
-        th.append(
-          iconButton("✎", `Переименовать «${work}»`, () => renameWork(index)),
-          iconButton("×", `Удалить столбец «${work}»`, () => deleteWork(index)),
-        );
-      }
-      headRow.append(th);
-    });
+    data.works.forEach((work) => headRow.append(cell("th", work, "num work")));
     headRow.append(cell("th", "сумма", "num"));
     head.append(headRow);
 
@@ -319,6 +312,36 @@
       ? `Группа ${data.group}. Баллы за лабораторные работы, от 0 до ${MAX_SCORE}.`
       : `Баллы за лабораторные работы, от 0 до ${MAX_SCORE}.`;
     $("table-section").hidden = false;
+    if (teacher) renderWorks();
+  }
+
+  // Список столбцов в панели «Работы»: название, порядок, удаление.
+  function renderWorks() {
+    const works = state.data.works;
+    const list = $("works-list");
+    list.replaceChildren();
+    works.forEach((work, index) => {
+      const li = document.createElement("li");
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = work;
+      input.setAttribute("aria-label", `Название столбца ${index + 1}`);
+      input.addEventListener("change", () => renameWork(index, input));
+      const up = iconButton("↑", `Переставить «${work}» левее`, () => moveWork(index, -1));
+      const down = iconButton("↓", `Переставить «${work}» правее`, () => moveWork(index, 1));
+      up.classList.add("up");
+      down.classList.add("down");
+      li.append(input, up, down, iconButton("×", `Удалить столбец «${work}»`, () => deleteWork(index)));
+      list.append(li);
+    });
+    $("works-count").textContent = works.length
+      ? `Столбцов: ${works.length}.`
+      : "Столбцов пока нет — добавьте хотя бы одну работу.";
+  }
+
+  function courseWorks() {
+    const names = [...document.querySelectorAll("#course-works option")].map((option) => option.value.trim());
+    return names.filter(Boolean).length ? names.filter(Boolean) : FALLBACK_WORKS.slice();
   }
 
   function markDirty() {
@@ -512,7 +535,7 @@
       setStatus("Пароли не совпадают.", "error");
       return;
     }
-    const data = { group: group.trim(), works: DEFAULT_WORKS.slice(), students: [] };
+    const data = { group: group.trim(), works: courseWorks(), students: [] };
     startTeacher(data, generateCode(), password.normalize("NFC"), null);
     showCode();
     setStatus("Журнал создан. Добавьте студентов и нажмите «Сохранить» — до этого он нигде не хранится.", "ok");
@@ -626,7 +649,6 @@
   function deleteStudent(student) {
     if (!confirm(`Удалить из журнала: ${student.name}?\nЕго баллы тоже удалятся.`)) return;
     state.data.students = state.data.students.filter((other) => other !== student);
-    state.invalid.clear();
     markDirty();
     renderTable();
   }
@@ -643,22 +665,51 @@
     $("work-name").value = "";
     markDirty();
     renderTable();
+    setStatus(`Столбец «${name}» добавлен в конец таблицы. Не забудьте сохранить.`, "ok");
   }
 
-  function renameWork(index) {
-    const name = (prompt("Название работы", state.data.works[index]) || "").replace(/\s+/g, " ").trim();
-    if (!name || name === state.data.works[index]) return;
-    state.data.works[index] = name;
+  function renameWork(index, input) {
+    const works = state.data.works;
+    const name = input.value.replace(/\s+/g, " ").trim();
+    if (!name || works.some((other, i) => i !== index && other === name)) {
+      setStatus(name ? `Столбец «${name}» уже есть.` : "Название столбца не может быть пустым.", "error");
+      input.value = works[index];
+      return;
+    }
+    if (name === works[index]) return;
+    works[index] = name;
     markDirty();
     renderTable();
   }
 
+  // Столбец меняется местами с соседним, баллы переезжают вместе с ним.
+  function moveWork(index, step) {
+    const works = state.data.works;
+    const target = index + step;
+    if (target < 0 || target >= works.length) return;
+    const swap = (values) => {
+      [values[index], values[target]] = [values[target], values[index]];
+    };
+    swap(works);
+    state.data.students.forEach((student) => swap(student.scores));
+    markDirty();
+    renderTable();
+    // Фокус остаётся на той же стрелке, чтобы двигать столбец дальше с
+    // клавиатуры; у края, где этой стрелки нет, — на обратной.
+    const moved = $("works-list").children[target];
+    const atEdge = step < 0 ? target === 0 : target === works.length - 1;
+    const same = step < 0 ? ".up" : ".down";
+    const other = step < 0 ? ".down" : ".up";
+    moved.querySelector(atEdge ? other : same).focus();
+  }
+
   function deleteWork(index) {
     const work = state.data.works[index];
-    if (!confirm(`Удалить столбец «${work}» вместе со всеми баллами в нём?`)) return;
+    const scored = state.data.students.filter((student) => typeof student.scores[index] === "number").length;
+    const warning = scored ? `\nВ нём баллов: ${scored} — они удалятся.` : "";
+    if (!confirm(`Удалить столбец «${work}»?${warning}`)) return;
     state.data.works.splice(index, 1);
     state.data.students.forEach((student) => student.scores.splice(index, 1));
-    state.invalid.clear();
     markDirty();
     renderTable();
   }
@@ -849,6 +900,12 @@
       markDirty();
     });
     $("btn-add-work").addEventListener("click", () => addWork($("work-name").value));
+    $("work-name").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        addWork($("work-name").value);
+      }
+    });
 
     $("btn-token").addEventListener("click", rememberToken);
     $("btn-token-forget").addEventListener("click", forgetToken);

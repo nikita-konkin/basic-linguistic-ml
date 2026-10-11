@@ -93,10 +93,31 @@
 </div>
 
 <div class="panel">
+<h2>Работы — столбцы журнала</h2>
+<p class="small muted">Сколько работ и в каком порядке, решаете вы. Название меняется прямо
+в поле; ↑ и ↓ переставляют столбец левее или правее. Баллы при переименовании и
+перестановке сохраняются, при удалении столбца — удаляются. <span id="works-count"></span></p>
+<ol class="works" id="works-list"></ol>
+<div class="row">
+<label for="work-name" class="sr-only">Название новой работы</label>
+<input type="text" id="work-name" list="course-works" placeholder="Новая работа">
+<button type="button" id="btn-add-work">Добавить столбец</button>
+</div>
+<datalist id="course-works"><!-- course-works --></datalist>
+<p class="muted small" style="margin-top:0.4rem">Подсказки в поле — работы курса из раздела
+«Материалы»; можно написать и своё название.</p>
+<div class="row" style="margin-top:0.8rem">
+<label for="group-name">Группа</label>
+<input type="text" id="group-name" placeholder="например: МЛГ-25">
+</div>
+</div>
+
+<div class="panel">
 <h2>Добавить студентов</h2>
 <p class="small muted">Вставьте список как есть, по одному человеку в строке. Номера, лишние
 пробелы и пустые строки уберутся сами; можно вставить столбец из Excel. Повторы
-не добавляются.</p>
+не добавляются. Исправить ФИО или удалить студента — кнопки ✎ и × рядом
+с ФИО в таблице.</p>
 <label for="students-input" class="sr-only">Список студентов</label>
 <textarea id="students-input" placeholder="1. Фамилия Имя Отчество&#10;2. Фамилия Имя Отчество"></textarea>
 <div class="row" style="margin-top:0.5rem">
@@ -110,21 +131,6 @@
 <button type="button" id="btn-cancel-add">Отмена</button>
 </div>
 </div>
-</div>
-
-<div class="panel">
-<h2>Группа и работы</h2>
-<div class="row" style="margin-bottom:0.6rem">
-<label for="group-name">Группа</label>
-<input type="text" id="group-name" placeholder="например: МЛГ-25">
-</div>
-<div class="row">
-<label for="work-name" class="sr-only">Название работы</label>
-<input type="text" id="work-name" placeholder="например: Л.р. № 4">
-<button type="button" id="btn-add-work">Добавить столбец</button>
-</div>
-<p class="muted small" style="margin-top:0.5rem">Переименовать или удалить столбец, студента —
-кнопки ✎ и × в таблице.</p>
 </div>
 
 <div class="panel">

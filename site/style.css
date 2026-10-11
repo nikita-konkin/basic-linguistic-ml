@@ -119,6 +119,53 @@ section {
   padding-top: 1.6rem;
 }
 
+/* Разделы главной сворачиваются; заголовок раздела — сам переключатель. */
+details.section {
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+details.section > summary {
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 1rem 0;
+  color: var(--navy);
+}
+
+details.section > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.section > summary::before {
+  content: "›";
+  display: inline-block;
+  width: 0.7em;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--brick);
+  transition: transform 0.15s;
+}
+
+details.section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.section > summary h2 {
+  margin: 0;
+}
+
+details.section > summary:hover h2 {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+details.section > .body {
+  padding: 0 0 1.4rem;
+}
+
 h2 {
   color: var(--navy);
   font-size: 1.45rem;
@@ -420,6 +467,13 @@ table.journal thead th:nth-child(2) {
   padding-left: 0.3rem;
 }
 
+table.journal thead th.work {
+  white-space: normal;
+  min-width: 4.5em;
+  max-width: 8.5em;
+  vertical-align: bottom;
+}
+
 table.journal input[type="number"] {
   width: 3.6em;
   text-align: right;
@@ -433,6 +487,30 @@ table.journal input[aria-invalid="true"] {
 
 table.journal tr.added td.name {
   color: var(--moss);
+}
+
+ol.works {
+  margin: 0.2rem 0 0.8rem;
+  padding-left: 1.8rem;
+}
+
+ol.works li {
+  margin-bottom: 0.35rem;
+}
+
+ol.works input[type="text"] {
+  width: min(20rem, 60vw);
+  margin-right: 0.3rem;
+}
+
+ol.works button.icon {
+  font-size: 1.05rem;
+  padding: 0.1rem 0.35rem;
+}
+
+ol.works li:first-child .up,
+ol.works li:last-child .down {
+  visibility: hidden;
 }
 
 ol.preview {

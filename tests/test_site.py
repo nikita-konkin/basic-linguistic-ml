@@ -80,7 +80,7 @@ def test_every_lecture_and_notebook_is_published(course, dist):
 def test_lab_list_matches_the_folder(course):
     # Та же проверка, что делает сборка: новая работа не потеряется молча.
     build_site.check_labs(course["labs"])
-    assert len(course["labs"]) == 4
+    assert len(course["labs"]) == 5
 
 
 def test_local_links_resolve(dist, links):
@@ -169,6 +169,28 @@ def test_index_escapes_course_text(course):
     assert "<script>alert" not in page
     assert "&lt;script&gt;" in page
     assert "<code>код</code>" in page
+
+
+def test_sections_fold_and_only_chosen_ones_are_open(course, index):
+    sections = dict(re.findall(r'<details class="section" id="(\w+)"( open)?>', index))
+    assert {"about", "schedule", "materials", "howto", "journal"} <= set(sections)
+    opened = {anchor for anchor, flag in sections.items() if flag}
+    assert opened == set(course.get("open_sections", ["materials"])) & set(sections)
+    # Ссылки меню ведут на существующие разделы.
+    for anchor in re.findall(r'<nav class="toc"[^>]*>(.*?)</nav>', index, re.S)[0].split('href="#')[1:]:
+        assert anchor.split('"')[0] in sections
+
+
+def test_unknown_open_section_is_an_error(course):
+    with pytest.raises(SystemExit):
+        build_site.render_index(dict(course, open_sections=["matrials"]), {})
+
+
+def test_journal_suggests_course_works(course, dist):
+    page = (dist / "journal" / "index.html").read_text(encoding="utf-8")
+    options = re.findall(r'<option value="([^"]*)">', page)
+    assert options == build_site.journal_works(course)
+    assert len(options) == len(course["labs"]) == len(set(options))
 
 
 def test_empty_sections_are_hidden(course, index):
