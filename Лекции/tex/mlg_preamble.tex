@@ -10,9 +10,25 @@
 \usepackage{polyglossia}
 \setmainlanguage{russian}
 \setotherlanguage{english}
-\setmainfont{Calibri}
-\setsansfont{Calibri}
-\setmonofont{Consolas}[Scale=0.92]
+% Без Calibri и Consolas (macOS, Linux) берутся шрифты из TeX Live: Carlito
+% совпадает с Calibri по ширине знаков, поэтому переносы и раскладка слайдов
+% те же; DejaVu Sans Mono уменьшен так, чтобы ширина знака была как у Consolas.
+\IfFontExistsTF{Calibri}{%
+  \setmainfont{Calibri}
+  \setsansfont{Calibri}
+}{%
+  \setmainfont{Carlito}[Extension=.ttf, UprightFont=*-Regular, BoldFont=*-Bold,
+                        ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+  \setsansfont{Carlito}[Extension=.ttf, UprightFont=*-Regular, BoldFont=*-Bold,
+                        ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+}
+\IfFontExistsTF{Consolas}{%
+  \setmonofont{Consolas}[Scale=0.92]
+}{%
+  \setmonofont{DejaVuSansMono}[Extension=.ttf, UprightFont=*, BoldFont=*-Bold,
+                               ItalicFont=*-Oblique, BoldItalicFont=*-BoldOblique,
+                               Scale=0.84]
+}
 
 \usepackage{graphicx}
 \usepackage{booktabs}
