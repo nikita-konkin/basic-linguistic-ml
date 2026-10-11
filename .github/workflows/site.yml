@@ -1,0 +1,74 @@
+name: Сайт курса
+
+# Сайт: https://konkin-nikita.ru/basic-linguistic-ml/
+# Собирается из main; журнал (только шифротекст) берётся из ветки journal.
+# Кнопка «Сохранить» в журнале запускает этот workflow через
+# workflow_dispatch, поэтому сохранённый журнал появляется на сайте сам.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "scripts/build_site.py"
+      - "scripts/run_notebooks.py"
+      - "Лекции/*.pdf"
+      - "Л.р/**"
+      - "requirements.txt"
+      - "tests/test_site.py"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Сборка
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Запуск из журнала тоже собирает main, а не ветку journal.
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Взять журнал из ветки journal
+        run: |
+          if git fetch --depth=1 origin journal; then
+            git show FETCH_HEAD:journal.json > "$RUNNER_TEMP/journal.json" || rm -f "$RUNNER_TEMP/journal.json"
+          fi
+
+      - name: Собрать сайт
+        run: python scripts/build_site.py --output dist --journal "$RUNNER_TEMP/journal.json"
+
+      - name: Проверить сборку
+        run: |
+          pip install "pytest>=8.0"
+          python -m pytest tests/test_site.py -q
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Публикация
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Опубликовать на GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

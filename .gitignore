@@ -10,6 +10,9 @@
 /Введение в машинное обучение.pptx
 Лекции/МЛГ_Интеллектуальный_анализ_текстовых_данных.pptx
 
+# Сборка сайта: python scripts/build_site.py
+/dist/
+
 # Python
 __pycache__/
 *.py[cod]

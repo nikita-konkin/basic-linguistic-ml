@@ -3,7 +3,20 @@ name: Ноутбуки
 on:
   push:
     branches: [main]
+    paths-ignore:
+      # Правка сайта курса ноутбуки не затрагивает.
+      - "site/**"
+      - "scripts/build_site.py"
+      - "tests/test_site.py"
+      - "BACKLOG.md"
+      - ".github/workflows/site.yml"
   pull_request:
+    paths-ignore:
+      - "site/**"
+      - "scripts/build_site.py"
+      - "tests/test_site.py"
+      - "BACKLOG.md"
+      - ".github/workflows/site.yml"
   workflow_dispatch:
     inputs:
       with_tensorflow:

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Журнал группы — Основы машинного обучения</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%232b4c6f'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif'%3EML%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<div class="page">
+<header class="site">
+<p class="kicker"><a href="../">← Материалы курса</a></p>
+<h1>Журнал группы</h1>
+<p class="subtitle" id="subtitle">Баллы за лабораторные работы, от 0 до 10.</p>
+</header>
+
+<div id="status" class="status" role="status" aria-live="polite"></div>
+
+<!-- Вход по коду группы -->
+<section id="open-view" class="panel">
+<h2>Открыть журнал</h2>
+<form id="view-form" class="row" autocomplete="off">
+<label for="view-code" class="sr-only">Код группы</label>
+<input id="view-code" class="code" type="text" placeholder="XXXX-XXXX-XXXX"
+       spellcheck="false" autocapitalize="characters" autocomplete="off" required>
+<button class="primary" type="submit">Открыть</button>
+<label class="check"><input type="checkbox" id="view-remember"> запомнить на этом устройстве</label>
+</form>
+<p class="muted small" style="margin-top:0.6rem">Код сообщает преподаватель. Журнал зашифрован:
+без кода его не прочесть ни на сайте, ни в репозитории.</p>
+</section>
+
+<!-- Таблица: и для группы, и для преподавателя -->
+<section id="table-section" hidden>
+<div class="row" id="view-actions">
+<button type="button" id="btn-close">Закрыть журнал</button>
+</div>
+<div class="table-wrap"><table class="journal" id="journal-table"></table></div>
+<p class="muted small" id="table-note"></p>
+</section>
+
+<!-- Вход и создание журнала -->
+<details id="teacher-entry">
+<summary>Вход для преподавателя</summary>
+<form id="teacher-form" class="panel" autocomplete="off">
+<div class="row">
+<label for="teacher-password" class="sr-only">Пароль преподавателя</label>
+<input type="password" id="teacher-password" placeholder="Пароль преподавателя" autocomplete="current-password">
+<button class="primary" type="submit">Войти</button>
+</div>
+</form>
+<form id="create-form" class="panel" autocomplete="off" hidden>
+<h2>Создать журнал</h2>
+<p class="small">Журнала ещё нет. Придумайте пароль преподавателя — не короче 12 знаков.
+Восстановить его нельзя: без пароля журнал можно будет только читать по коду группы.</p>
+<div class="row" style="margin-bottom:0.5rem">
+<label for="create-group" class="sr-only">Группа</label>
+<input type="text" id="create-group" placeholder="Группа, например: МЛГ-25">
+</div>
+<div class="row" style="margin-bottom:0.5rem">
+<label for="create-password" class="sr-only">Пароль</label>
+<input type="password" id="create-password" placeholder="Пароль" autocomplete="new-password">
+<label for="create-password2" class="sr-only">Пароль ещё раз</label>
+<input type="password" id="create-password2" placeholder="Пароль ещё раз" autocomplete="new-password">
+</div>
+<button class="primary" type="submit">Создать журнал</button>
+</form>
+</details>
+
+<!-- Панель преподавателя -->
+<section id="teacher-panel" hidden>
+
+<div class="panel">
+<h2>Журнал</h2>
+<div class="row">
+<button type="button" class="primary" id="btn-save">Сохранить</button>
+<button type="button" id="btn-download">Скачать journal.json</button>
+<button type="button" id="btn-code">Код и ссылка для группы</button>
+<button type="button" id="btn-new-code">Сменить код группы</button>
+<button type="button" id="btn-logout">Выйти</button>
+</div>
+<div id="code-box" class="note" hidden>
+<p style="margin:0">Код группы: <span class="codebox" id="code-value"></span></p>
+<p class="small" style="margin:0.4rem 0">Ссылка, которая сразу открывает журнал:
+<a id="code-link" href="#"></a></p>
+<div class="row">
+<button type="button" id="btn-copy-code">Копировать код</button>
+<button type="button" id="btn-copy-link">Копировать ссылку</button>
+</div>
+</div>
+</div>
+
+<div class="panel">
+<h2>Добавить студентов</h2>
+<p class="small muted">Вставьте список как есть, по одному человеку в строке. Номера, лишние
+пробелы и пустые строки уберутся сами; можно вставить столбец из Excel. Повторы
+не добавляются.</p>
+<label for="students-input" class="sr-only">Список студентов</label>
+<textarea id="students-input" placeholder="1. Фамилия Имя Отчество&#10;2. Фамилия Имя Отчество"></textarea>
+<div class="row" style="margin-top:0.5rem">
+<button type="button" id="btn-preview">Проверить список</button>
+</div>
+<div id="preview" hidden>
+<p id="preview-summary" style="margin-top:0.6rem"></p>
+<ol class="preview" id="preview-list"></ol>
+<div class="row">
+<button type="button" class="primary" id="btn-add">Добавить</button>
+<button type="button" id="btn-cancel-add">Отмена</button>
+</div>
+</div>
+</div>
+
+<div class="panel">
+<h2>Группа и работы</h2>
+<div class="row" style="margin-bottom:0.6rem">
+<label for="group-name">Группа</label>
+<input type="text" id="group-name" placeholder="например: МЛГ-25">
+</div>
+<div class="row">
+<label for="work-name" class="sr-only">Название работы</label>
+<input type="text" id="work-name" placeholder="например: Л.р. № 4">
+<button type="button" id="btn-add-work">Добавить столбец</button>
+</div>
+<p class="muted small" style="margin-top:0.5rem">Переименовать или удалить столбец, студента —
+кнопки ✎ и × в таблице.</p>
+</div>
+
+<div class="panel">
+<h2>Сохранение на GitHub</h2>
+<p class="small">«Сохранить» записывает зашифрованный журнал в ветку <code>journal</code>
+репозитория и пересобирает сайт; группа увидит изменения через 1–2 минуты. Нужен
+fine-grained токен GitHub: доступ только к репозиторию <code>basic-linguistic-ml</code>,
+права <b>Contents</b> и <b>Actions</b> — Read and write. Без токена «Сохранить»
+скачивает файл.</p>
+<div class="row">
+<label for="token-input" class="sr-only">Токен GitHub</label>
+<input type="password" id="token-input" placeholder="github_pat_…" autocomplete="off">
+<button type="button" id="btn-token">Запомнить токен</button>
+<button type="button" id="btn-token-forget">Забыть</button>
+</div>
+<label class="check" style="margin-top:0.4rem"><input type="checkbox" id="token-remember">
+хранить на этом устройстве и после закрытия вкладки</label>
+<p class="muted small" id="token-state" style="margin-top:0.4rem"></p>
+</div>
+
+<details class="panel">
+<summary>Сменить пароль преподавателя</summary>
+<form id="password-form" autocomplete="off" style="margin-top:0.6rem">
+<div class="row">
+<label for="new-password" class="sr-only">Новый пароль</label>
+<input type="password" id="new-password" placeholder="Новый пароль" autocomplete="new-password">
+<label for="new-password2" class="sr-only">Новый пароль ещё раз</label>
+<input type="password" id="new-password2" placeholder="Ещё раз" autocomplete="new-password">
+<button type="submit">Сменить</button>
+</div>
+<p class="muted small">Новый пароль начнёт действовать после сохранения.</p>
+</form>
+</details>
+
+</section>
+
+<footer class="site">
+Журнал хранится только в зашифрованном виде (AES-256-GCM, ключ из кода или пароля
+через PBKDF2). Расшифровка происходит в вашем браузере; ни код, ни пароль никуда
+не отправляются.
+</footer>
+</div>
+<script src="journal.js"></script>
+</body>
+</html>
