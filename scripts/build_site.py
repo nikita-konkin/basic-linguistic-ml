@@ -15,6 +15,10 @@
 
 Журнал хранится не здесь, а в ветке `journal`: workflow достаёт оттуда
 `journal.json` и передаёт его через `--journal`. В файле только шифротекст.
+
+Сдача работ (`submit/`) включается полем `submit_url` в course.toml — это
+адрес сервера приёма (submit-server/). Пусто — на сайте нет ни ссылок на
+сдачу, ни панели сданных работ в журнале.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ import argparse
 import datetime as dt
 import hashlib
 import html
+import json
 import os
 import re
 import shutil
@@ -198,6 +203,10 @@ def plural(count: int, one: str, few: str, many: str) -> str:
     return f"{count} {word}"
 
 
+# Метка и действие для строк, которые не файлы: страница сдачи.
+CHIP_TEXT = {"send": "сдача"}
+
+
 def file_row(kind: str, title: str, href: str, size: str = "", download: str = "", desc: str = "") -> str:
     """Строка материала: метка типа, название, размер, действие. Вся строка — ссылка."""
     attrs = f' download="{e(download)}"' if download else ""
@@ -206,10 +215,10 @@ def file_row(kind: str, title: str, href: str, size: str = "", download: str = "
     desc_html = f'<span class="desc">{inline(desc, links=False)}</span>' if desc else ""
     return (
         f'<li><a class="file" href="{e(href)}"{attrs}>'
-        f'<span class="chip chip-{kind}">{kind}</span>'
+        f'<span class="chip chip-{kind}">{CHIP_TEXT.get(kind, kind)}</span>'
         f'<span class="what">{e(title)}{desc_html}</span>'
         f'<span class="size">{e(size)}</span>'
-        f'<span class="go">{"открыть" if kind == "web" else "скачать"}</span></a></li>'
+        f'<span class="go">{"скачать" if download else "открыть"}</span></a></li>'
     )
 
 
@@ -330,6 +339,8 @@ def work_panel(index: int, lab: dict, course: dict, files: dict[str, dict]) -> s
     if lab.get("playground"):
         playground = next(item for item in course["playgrounds"] if item["url"] == lab["playground"])
         rows.append(file_row("web", f"Интерактивная страница «{playground['title']}»", playground["url"]))
+    if course.get("submit_url"):
+        rows.append(file_row("send", "Сдать работу", f"submit/?work={slug}", desc="файл шифруется в браузере"))
     kwic = ""
     if lab.get("kwic"):
         left, key, right = lab["kwic"]
@@ -542,10 +553,17 @@ def section_contacts(course: dict) -> str:
     return f'<dl class="contacts">{"".join(rows)}</dl>'
 
 
-def section_journal() -> str:
+def section_journal(course: dict) -> str:
+    submit = (
+        "<p>Сдать работу можно на <a href=\"submit/\">странице сдачи</a> по тому же коду: "
+        "файл шифруется в браузере, прочитать его может только преподаватель.</p>"
+        if course.get("submit_url")
+        else ""
+    )
     return (
         "<p>Баллы за сданные работы. Журнал открывается по коду группы, "
         "который сообщает преподаватель.</p>"
+        f"{submit}"
         '<p><a class="tag-link" href="journal/">открыть журнал →</a></p>'
     )
 
@@ -582,7 +600,7 @@ def render_index(course: dict, files: dict[str, dict]) -> str:
         ("howto", "Как запустить ноутбуки", section_howto(), ""),
         ("literature", "Литература", section_literature(course), ""),
         ("contacts", "Контакты", section_contacts(course), ""),
-        ("journal", "Журнал группы", section_journal(), '<span class="chip chip-zip">по коду</span>'),
+        ("journal", "Журнал группы", section_journal(course), '<span class="chip chip-zip">по коду</span>'),
     ]
     assert tuple(anchor for anchor, *_ in sections) == SECTION_ANCHORS
     present = [section for section in sections if section[2]]
@@ -603,6 +621,7 @@ def render_index(course: dict, files: dict[str, dict]) -> str:
         subtitle = f"{subtitle} · {course['semester']}" if subtitle else course["semester"]
     updated = dt.datetime.now(MOSCOW).strftime("%d.%m.%Y")
     title = course["title"]
+    submit_tag = '<a class="tag-link" href="submit/">сдать работу →</a>' if course.get("submit_url") else ""
     css = version(SITE / "style.css")
     return f"""<!doctype html>
 <html lang="ru">
@@ -624,7 +643,7 @@ def render_index(course: dict, files: dict[str, dict]) -> str:
 <header class="site">
 <p class="kicker">{e(subtitle)}</p>
 <h1>{e(title)}</h1>
-<p class="tags"><a class="tag-link" href="journal/">журнал группы →</a><a class="tag-link quiet" href="#materials">все материалы ↓</a></p>
+<p class="tags"><a class="tag-link" href="journal/">журнал группы →</a>{submit_tag}<a class="tag-link quiet" href="#materials">все материалы ↓</a></p>
 </header>
 <nav class="route" aria-label="Работы курса" data-current="{e(selected)}">
 <p class="route-caption">маршрут курса · выберите работу</p>
@@ -664,21 +683,70 @@ def journal_works(course: dict) -> list[str]:
     return [lab.get("journal") or lab["title"] for lab in course["labs"]]
 
 
-def stamp_journal_page(page: Path, course: dict) -> None:
+def notebook_heading(path: Path) -> str:
+    """Первый заголовок «# …» ноутбука: по нему страница сдачи узнаёт работу."""
+    notebook = json.loads(path.read_text(encoding="utf-8"))
+    for cell in notebook["cells"]:
+        if cell["cell_type"] == "markdown":
+            match = re.search(r"^#\s+(.+)$", "".join(cell["source"]), re.M)
+            if match:
+                return " ".join(match.group(1).split())
+    return ""
+
+
+def site_config(course: dict) -> dict:
+    """Что нужно журналу и странице сдачи: адрес приёма и работы курса."""
+    return {
+        "submitUrl": course.get("submit_url", "").rstrip("/"),
+        "works": [
+            {
+                "slug": lab["slug"],
+                "title": lab["title"],
+                "journal": lab.get("journal") or lab["title"],
+                "heading": notebook_heading(resolve(lab["file"])),
+            }
+            for lab in course["labs"]
+        ],
+    }
+
+
+def config_script(course: dict) -> str:
+    # «<» экранируется, чтобы текст из course.toml не закрыл тег <script>.
+    text = json.dumps(site_config(course), ensure_ascii=False).replace("<", "\\u003c")
+    return f'<script id="mlg-config" type="application/json">{text}</script>'
+
+
+def stamp_page(page: Path, replacements: dict[str, str]) -> None:
+    """Подставить в страницу из site/ версии файлов и вставки при сборке."""
     text = page.read_text(encoding="utf-8")
-    options = "".join(f'<option value="{e(name)}"></option>' for name in journal_works(course))
-    for old, new in (
-        ("<!-- course-works -->", options),
-        ("<!-- theme-head -->", THEME_HEAD),
-        ("<!-- theme-button -->", THEME_BUTTON),
-        ('src="../theme.js"', f'src="../theme.js?v={version(SITE / "theme.js")}"'),
-        ('href="../style.css"', f'href="../style.css?v={version(SITE / "style.css")}"'),
-        ('src="journal.js"', f'src="journal.js?v={version(SITE / "journal" / "journal.js")}"'),
-    ):
+    for old, new in replacements.items():
         if old not in text:
-            raise SystemExit(f"в site/journal/index.html нет {old}")
+            raise SystemExit(f"в {page.relative_to(page.parents[1])} нет {old}")
         text = text.replace(old, new)
     page.write_text(text, encoding="utf-8")
+
+
+def common_stamps(course: dict, script: Path) -> dict[str, str]:
+    return {
+        "<!-- theme-head -->": THEME_HEAD,
+        "<!-- theme-button -->": THEME_BUTTON,
+        "<!-- mlg-config -->": config_script(course),
+        'src="../theme.js"': f'src="../theme.js?v={version(SITE / "theme.js")}"',
+        'src="../crypto.js"': f'src="../crypto.js?v={version(SITE / "crypto.js")}"',
+        'href="../style.css"': f'href="../style.css?v={version(SITE / "style.css")}"',
+        f'src="{script.name}"': f'src="{script.name}?v={version(script)}"',
+    }
+
+
+def stamp_journal_page(page: Path, course: dict) -> None:
+    options = "".join(f'<option value="{e(name)}"></option>' for name in journal_works(course))
+    stamps = common_stamps(course, SITE / "journal" / "journal.js")
+    stamps["<!-- course-works -->"] = options
+    stamp_page(page, stamps)
+
+
+def stamp_submit_page(page: Path, course: dict) -> None:
+    stamp_page(page, common_stamps(course, SITE / "submit" / "submit.js"))
 
 
 def build(out: Path, journal: Path | None = None) -> None:
@@ -692,9 +760,12 @@ def build(out: Path, journal: Path | None = None) -> None:
     (out / "index.html").write_text(render_index(course, files), encoding="utf-8")
     shutil.copyfile(SITE / "style.css", out / "style.css")
     shutil.copyfile(SITE / "theme.js", out / "theme.js")
+    shutil.copyfile(SITE / "crypto.js", out / "crypto.js")
     shutil.copytree(SITE / "fonts", out / "fonts")
     shutil.copytree(SITE / "journal", out / "journal")
     stamp_journal_page(out / "journal" / "index.html", course)
+    shutil.copytree(SITE / "submit", out / "submit")
+    stamp_submit_page(out / "submit" / "index.html", course)
     if journal is not None and journal.is_file() and journal.stat().st_size > 0:
         shutil.copyfile(journal, out / "journal" / "journal.json")
     # Сборка уже готовая: Jekyll на Pages ей не нужен.

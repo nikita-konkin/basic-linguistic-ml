@@ -63,6 +63,8 @@
   --web-ink: #24543a;
   --zip-bg: #ece7f6;
   --zip-ink: #46336e;
+  --send-bg: #f6ead0;
+  --send-ink: #6b4a12;
   --focus: #2b4c6f;
   color-scheme: light;
 }
@@ -98,6 +100,8 @@
     --web-ink: #c8ead6;
     --zip-bg: #2f2547;
     --zip-ink: #ddd3f2;
+    --send-bg: #45361a;
+    --send-ink: #f2dfb8;
     --focus: #8fb3d9;
     color-scheme: dark;
   }
@@ -131,6 +135,8 @@
   --web-ink: #c8ead6;
   --zip-bg: #2f2547;
   --zip-ink: #ddd3f2;
+  --send-bg: #45361a;
+  --send-ink: #f2dfb8;
   --focus: #8fb3d9;
   color-scheme: dark;
 }
@@ -657,6 +663,11 @@ a.file .go {
   color: var(--zip-ink);
 }
 
+.chip-send {
+  background: var(--send-bg);
+  color: var(--send-ink);
+}
+
 /* ----------------------------------------------------- разделы-строки */
 
 main.sections {
@@ -849,6 +860,7 @@ label.check {
 input[type="text"],
 input[type="password"],
 input[type="number"],
+select,
 textarea {
   font: 16px/1.4 var(--sans);
   color: var(--ink);
@@ -1080,6 +1092,219 @@ ol.preview li.dup {
 
 .page > section {
   padding-top: 0.4rem;
+}
+
+/* ------------------------------------------------- сданные работы */
+
+ul.submissions {
+  list-style: none;
+  margin: 0.4rem 0 0.8rem;
+  padding: 0;
+  max-height: 28rem;
+  overflow-y: auto;
+}
+
+ul.submissions li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--line);
+}
+
+ul.submissions li:first-child {
+  border-top: none;
+}
+
+ul.submissions .text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+ul.submissions .what {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+ul.submissions .meta {
+  font: 0.8rem/1.4 var(--mono);
+  color: var(--faint);
+}
+
+ul.submissions li.old .who b {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+ul.submissions li.broken .who {
+  color: var(--brick);
+}
+
+.flag {
+  font: 11.5px/1.5 var(--mono);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--pdf-bg);
+  color: var(--pdf-ink);
+  white-space: nowrap;
+}
+
+.flag.quiet {
+  background: var(--code);
+  color: var(--faint);
+}
+
+/* «сдано» под баллом в журнале преподавателя. */
+table.journal button.handed {
+  display: block;
+  margin: 3px auto 0;
+  min-height: 0;
+  padding: 0 5px;
+  border: none;
+  border-radius: 3px;
+  font: 11px/1.6 var(--mono);
+  background: var(--web-bg);
+  color: var(--web-ink);
+}
+
+/* ----------------------------------------------------- страница сдачи */
+
+.panel h2 .step {
+  display: inline-block;
+  min-width: 1.6em;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  text-align: center;
+  font: 500 0.85rem/1.6em var(--mono);
+  background: var(--tag-bg);
+  color: var(--tag-ink);
+}
+
+select {
+  width: 100%;
+  max-width: 32rem;
+}
+
+button.link {
+  border: none;
+  background: none;
+  min-height: 0;
+  padding: 0 0.2rem;
+  color: var(--navy);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+label.drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 22px 14px;
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+label.drop:hover,
+label.drop.over {
+  border-color: var(--navy);
+  background: var(--code);
+}
+
+label.drop.chosen {
+  border-style: solid;
+}
+
+label.drop input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+label.drop:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.drop-main {
+  font-weight: 600;
+}
+
+.drop-hint {
+  font-size: 0.85rem;
+  color: var(--faint);
+}
+
+ul.checks {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+}
+
+ul.checks li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin: 0.3rem 0;
+  font-size: 0.95rem;
+}
+
+ul.checks .mark {
+  flex: none;
+  width: 1.3em;
+  text-align: center;
+  font: 600 0.9rem var(--mono);
+  border-radius: 3px;
+}
+
+ul.checks li.ok .mark {
+  color: var(--moss);
+}
+
+ul.checks li.warn .mark {
+  background: var(--send-bg);
+  color: var(--send-ink);
+}
+
+ul.checks li.error {
+  color: var(--brick);
+}
+
+.row.send {
+  margin: 4px 0 18px;
+}
+
+.row.send button {
+  min-height: 46px;
+  padding: 0.45rem 1.4rem;
+  font-size: 1rem;
+}
+
+dl.receipt-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 0.4rem 0 0.8rem;
+}
+
+dl.receipt-list dt {
+  color: var(--faint);
+  font-size: 0.9rem;
+}
+
+dl.receipt-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.receipt {
+  border-color: var(--moss);
 }
 
 /* ----------------------------------------------------- широкий экран */

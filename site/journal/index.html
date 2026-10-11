@@ -8,6 +8,7 @@
 <title>Журнал группы — Основы машинного обучения</title>
 <link rel="stylesheet" href="../style.css">
 <!-- theme-head -->
+<!-- mlg-config -->
 <link rel="preload" href="../fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%231d2430'/%3E%3Ccircle cx='30' cy='50' r='11' fill='none' stroke='%23c9d1dc' stroke-width='6'/%3E%3Ccircle cx='70' cy='50' r='11' fill='%23e58a7c'/%3E%3Cpath d='M41 50h18' stroke='%238fb3d9' stroke-width='8'/%3E%3C/svg%3E">
 </head>
@@ -96,6 +97,24 @@
 </div>
 </div>
 
+<div class="panel" id="submissions-panel" hidden>
+<h2>Сданные работы</h2>
+<p class="small muted">То, что студенты отправили со <a href="../submit/">страницы сдачи</a>.
+Работы зашифрованы ключом этого журнала: открыть их можно только здесь. «сдано» в
+таблице — то же самое, по столбцу работы; нажатие скачивает последнюю версию.</p>
+<div class="row">
+<button type="button" id="btn-submissions">Обновить</button>
+<label for="submissions-work" class="sr-only">Работа</label>
+<select id="submissions-work"><option value="">все работы</option></select>
+<label class="check"><input type="checkbox" id="submissions-latest" checked> только последние версии</label>
+</div>
+<p class="small" id="submissions-status"></p>
+<ul class="submissions" id="submissions-list"></ul>
+<div class="row">
+<button type="button" id="btn-submissions-zip" data-off="1" disabled>Скачать показанные одним архивом</button>
+</div>
+</div>
+
 <div class="panel">
 <h2>Работы — столбцы журнала</h2>
 <p class="small muted">Сколько работ и в каком порядке, решаете вы. Название меняется прямо
@@ -176,6 +195,7 @@ fine-grained токен GitHub: доступ только к репозитор�
 PBKDF2) · расшифровка — в вашем браузере, ни код, ни пароль никуда не отправляются
 </footer>
 </div>
+<script src="../crypto.js"></script>
 <script src="journal.js"></script>
 <script src="../theme.js"></script>
 </body>

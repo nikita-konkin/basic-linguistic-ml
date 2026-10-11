@@ -87,6 +87,7 @@ def test_local_links_resolve(dist, links):
     local = [link["href"] for link in links if link.get("href") and not re.match(r"[a-z]+:|#", link["href"])]
     assert local, "на главной нет ни одной ссылки на файлы"
     for href in local:
+        href = href.split("?")[0]
         target = dist / href
         if href.endswith("/"):
             target = target / "index.html"
@@ -250,7 +251,8 @@ def test_unknown_open_section_is_an_error(course):
 
 def test_journal_suggests_course_works(course, dist):
     page = (dist / "journal" / "index.html").read_text(encoding="utf-8")
-    options = re.findall(r'<option value="([^"]*)">', page)
+    datalist = re.search(r'<datalist id="course-works">(.*?)</datalist>', page, re.S).group(1)
+    options = re.findall(r'<option value="([^"]*)">', datalist)
     assert options == build_site.journal_works(course)
     assert len(options) == len(course["labs"]) == len(set(options))
 
@@ -260,3 +262,61 @@ def test_empty_sections_are_hidden(course, index):
         assert 'id="news"' not in index
     if not any((course.get("contacts") or {}).values()):
         assert 'id="contacts"' not in index
+
+
+def page_config(page: str) -> dict:
+    return json.loads(re.search(r'<script id="mlg-config" type="application/json">(.*?)</script>', page, re.S).group(1))
+
+
+def test_submit_page_is_published(course, dist):
+    page = (dist / "submit" / "index.html").read_text(encoding="utf-8")
+    for script in ("submit/submit.js", "crypto.js", "theme.js"):
+        name = script.split("/")[-1]
+        assert re.search(rf'src="(\.\./)?{re.escape(name)}\?v=[0-9a-f]{{10}}"', page), script
+        assert (dist / script).is_file(), script
+    assert 'name="robots" content="noindex"' in page
+    # Шифрование подключается раньше страницы, которая им пользуется.
+    assert page.index("crypto.js") < page.index("submit.js")
+
+
+def test_pages_get_the_course_config(course, dist):
+    for name in ("submit", "journal"):
+        config = page_config((dist / name / "index.html").read_text(encoding="utf-8"))
+        assert config["submitUrl"] == course["submit_url"].rstrip("/")
+        assert [work["slug"] for work in config["works"]] == [lab["slug"] for lab in course["labs"]]
+        assert [work["journal"] for work in config["works"]] == build_site.journal_works(course)
+    # Заголовок ноутбука — то, по чему страница сдачи узнаёт работу.
+    headings = [work["heading"] for work in config["works"]]
+    assert all(headings) and len(set(headings)) == len(headings)
+    assert "Лабораторная работа № 2. Векторные представления и память переводов" in headings
+
+
+def test_config_cannot_close_the_script_tag(course):
+    labs = [dict(course["labs"][0], title="</script><script>alert(1)</script>")] + course["labs"][1:]
+    script = build_site.config_script(dict(course, labs=labs))
+    assert script.count("</script>") == 1
+    assert json.loads(script.split(">", 1)[1].rsplit("<", 1)[0])["works"][0]["title"].startswith("</script>")
+
+
+def test_work_cards_link_the_submit_page(course, index):
+    for lab in course["labs"]:
+        card = re.search(rf'<section class="work-card" id="work-{lab["slug"]}".*?</section>', index, re.S).group(0)
+        assert f'href="submit/?work={lab["slug"]}"' in card
+    assert 'href="submit/"' in index
+
+
+def test_no_submit_links_without_submit_url(course):
+    files = {key: {"href": "x", "download": "x", "size": "1 КБ"} for key in ("kit",)}
+    files.update({f"labs:{lab['slug']}": files["kit"] for lab in course["labs"]})
+    files.update({f"lectures:{item['slug']}": files["kit"] for item in course["lectures"]})
+    page = build_site.render_index(dict(course, submit_url=""), files)
+    assert "submit/" not in page
+
+
+def test_crypto_is_shared(dist):
+    # Шифр журнала и сдачи — один модуль: журнал не держит своей копии.
+    journal = (dist / "journal" / "journal.js").read_text(encoding="utf-8")
+    assert "crypto.subtle.deriveKey" not in journal
+    crypto = (dist / "crypto.js").read_text(encoding="utf-8")
+    for marker in ("PBKDF2", "ECDH", "HKDF", "AES-GCM", "MLGS1", "mlg-journal/", "mlg-submit/1"):
+        assert marker in crypto, marker

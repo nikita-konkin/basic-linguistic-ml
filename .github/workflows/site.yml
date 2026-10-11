@@ -16,6 +16,8 @@ on:
       - "Л.р/**"
       - "requirements.txt"
       - "tests/test_site.py"
+      - "submit-server/**"
+      - "tests/test_submit_server.py"
       - ".github/workflows/site.yml"
   workflow_dispatch:
 
@@ -52,7 +54,7 @@ jobs:
       - name: Проверить сборку
         run: |
           pip install "pytest>=8.0"
-          python -m pytest tests/test_site.py -q
+          python -m pytest tests/test_site.py tests/test_submit_server.py -q
 
       - uses: actions/upload-pages-artifact@v3
         with:

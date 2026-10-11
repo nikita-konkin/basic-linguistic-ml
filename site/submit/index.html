@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d2430">
+<meta name="robots" content="noindex">
+<title>Сдать работу — Основы машинного обучения</title>
+<link rel="stylesheet" href="../style.css">
+<!-- theme-head -->
+<!-- mlg-config -->
+<link rel="preload" href="../fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%231d2430'/%3E%3Ccircle cx='30' cy='50' r='11' fill='none' stroke='%23c9d1dc' stroke-width='6'/%3E%3Ccircle cx='70' cy='50' r='11' fill='%23e58a7c'/%3E%3Cpath d='M41 50h18' stroke='%238fb3d9' stroke-width='8'/%3E%3C/svg%3E">
+</head>
+<body>
+<div class="topbar"><div class="bar"><span><a href="../">← материалы курса</a></span><span class="right"><span class="counts">сдача · шифруется в браузере</span><!-- theme-button --></span></div></div>
+<div class="page">
+<header class="site">
+<p class="kicker">основы машинного обучения</p>
+<h1>Сдать работу</h1>
+<p class="subtitle">Файл шифруется прямо в браузере и уходит преподавателю. Прочитать его может
+только преподаватель.</p>
+</header>
+
+<div id="status" class="status" role="status" aria-live="polite"></div>
+
+<section id="step-code" class="panel">
+<h2><span class="step">1</span>Код группы</h2>
+<form id="code-form" class="row" autocomplete="off">
+<label for="code" class="sr-only">Код группы</label>
+<input id="code" class="code" type="text" placeholder="XXXX-XXXX-XXXX"
+       spellcheck="false" autocapitalize="characters" autocomplete="off" required>
+<button class="primary" type="submit">Далее</button>
+<label class="check"><input type="checkbox" id="remember"> запомнить на этом устройстве</label>
+</form>
+<p class="muted small" style="margin:0.6rem 0 0">Тот же код, что открывает <a href="../journal/">журнал группы</a>.
+По нему страница находит список группы и ключ, которым шифруется работа.</p>
+</section>
+
+<section id="step-group" class="panel" hidden>
+<p style="margin:0"><span id="group-label"></span>
+<button type="button" class="link" id="btn-other-code">другой код</button></p>
+</section>
+
+<form id="submit-form" hidden novalidate>
+<section class="panel">
+<h2><span class="step">2</span>Кто сдаёт</h2>
+<label for="student" class="sr-only">ФИО</label>
+<select id="student" required><option value="">— выберите себя в списке —</option></select>
+<p class="muted small" style="margin:0.5rem 0 0">Если вас нет в списке, напишите преподавателю.</p>
+</section>
+
+<section class="panel">
+<h2><span class="step">3</span>Работа</h2>
+<label for="work" class="sr-only">Работа</label>
+<select id="work" required><option value="">— выберите работу —</option></select>
+</section>
+
+<section class="panel">
+<h2><span class="step">4</span>Файл</h2>
+<label class="drop" id="drop" for="file">
+<input type="file" id="file" accept=".ipynb,.pdf,.docx,.zip">
+<span class="drop-main" id="drop-main">Перетащите файл сюда или нажмите, чтобы выбрать</span>
+<span class="drop-hint">ноутбук .ipynb, а также .pdf, .docx или .zip · до 10 МБ</span>
+</label>
+<ul class="checks" id="checks" hidden></ul>
+<p class="muted small" style="margin:0.5rem 0 0">Ноутбук проверяется ещё до отправки: запущены
+ли ячейки, нет ли ошибок, та ли это работа. Предупреждения не мешают отправить — но лучше
+сначала исправить.</p>
+</section>
+
+<div class="row send">
+<button class="primary" type="submit" id="btn-send">Отправить работу</button>
+</div>
+</form>
+
+<section id="receipt" class="panel receipt" hidden>
+<h2>Работа принята</h2>
+<dl class="receipt-list">
+<dt>ФИО</dt><dd id="r-name"></dd>
+<dt>Работа</dt><dd id="r-work"></dd>
+<dt>Файл</dt><dd id="r-file"></dd>
+<dt>Получена</dt><dd id="r-time"></dd>
+<dt>Номер</dt><dd class="mono" id="r-id"></dd>
+<dt>Контрольная сумма</dt><dd class="mono" id="r-sum"></dd>
+</dl>
+<p class="small">Сохраните квитанцию — например, снимком экрана. Если нужно исправить работу,
+отправьте её ещё раз: преподаватель видит все версии и проверяет последнюю.</p>
+<div class="row">
+<button type="button" id="btn-again">Отправить ещё файл</button>
+</div>
+</section>
+
+<footer class="site">
+работа шифруется в браузере (ECDH P-256 + AES-256-GCM) ключом преподавателя из журнала ·
+на сервер приёма уходит только шифротекст
+</footer>
+</div>
+<script src="../crypto.js"></script>
+<script src="submit.js"></script>
+<script src="../theme.js"></script>
+</body>
+</html>

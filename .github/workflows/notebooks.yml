@@ -8,6 +8,8 @@ on:
       - "site/**"
       - "scripts/build_site.py"
       - "tests/test_site.py"
+      - "submit-server/**"
+      - "tests/test_submit_server.py"
       - "BACKLOG.md"
       - ".github/workflows/site.yml"
   pull_request:
@@ -15,6 +17,8 @@ on:
       - "site/**"
       - "scripts/build_site.py"
       - "tests/test_site.py"
+      - "submit-server/**"
+      - "tests/test_submit_server.py"
       - "BACKLOG.md"
       - ".github/workflows/site.yml"
   workflow_dispatch:

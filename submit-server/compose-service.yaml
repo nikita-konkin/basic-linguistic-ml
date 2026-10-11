@@ -1,0 +1,20 @@
+# Сервис для docker-compose.yaml соседнего проекта с nginx (ssl-nginx-docker):
+# вставляется в раздел services. Код — в ../mlg-submit, конверты — в
+# ../mlg-submit/data (папку создаёт владелец, uid:gid ниже — его).
+
+    # Приём сданных работ курса МЛГ: код в ../mlg-submit, работы в ../mlg-submit/data
+    mlg-submit:
+        build:
+            context: ../mlg-submit
+        container_name: mlg-submit
+        user: "1000:1000"
+        expose:
+            - 8095
+        environment:
+            - ALLOWED_ORIGINS=https://konkin-nikita.ru
+            - MAX_TOTAL_MB=4096
+        volumes:
+            - ../mlg-submit/data:/data
+        networks:
+            - mynetwork
+        restart: unless-stopped
