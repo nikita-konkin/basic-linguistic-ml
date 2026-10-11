@@ -201,6 +201,11 @@
         const td = cell("td", null, "num score");
         td.dataset.student = nameKey(student.name);
         td.dataset.column = String(column);
+        const handed = student.handed[column];
+        const showHanded = () => {
+          td.classList.toggle("pending", Boolean(handed) && typeof student.scores[column] !== "number");
+        };
+        if (handed) td.title = `Сдано ${when(handed)}`;
         if (teacher) {
           const input = document.createElement("input");
           input.type = "number";
@@ -219,6 +224,7 @@
               state.invalid.delete(id);
               student.scores[column] = text === "" ? null : Number(text);
               showSum();
+              showHanded();
             } else {
               state.invalid.add(id);
             }
@@ -226,8 +232,9 @@
           });
           td.append(input);
         } else {
-          td.textContent = typeof value === "number" ? String(value) : "—";
+          td.textContent = typeof value === "number" ? String(value) : handed ? "сдано" : "—";
         }
+        showHanded();
         tr.append(td);
       });
       showSum();
@@ -237,8 +244,10 @@
 
     table.append(head, body);
     const count = data.students.length;
+    const pending = data.students.some((student) => student.handed.some(Boolean));
     $("table-note").textContent = count
-      ? `Студентов: ${count}. «—» — работа ещё не оценена. Баллы — от 0 до ${MAX_SCORE}.`
+      ? `Студентов: ${count}. «—» — работа ещё не оценена. Баллы — от 0 до ${MAX_SCORE}.` +
+        (pending ? " Цветом отмечены работы, которые сданы и ждут проверки." : "")
       : teacher
         ? "Студентов пока нет — добавьте список ниже."
         : "Студентов пока нет.";
@@ -269,6 +278,20 @@
       up.classList.add("up");
       down.classList.add("down");
       li.append(input, up, down, iconButton("×", `Удалить столбец «${work}»`, () => deleteWork(index)));
+      if (config.submitUrl) {
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", `Какая работа сдаётся в столбец «${work}»`);
+        select.append(new Option("сдача: не связан с работой курса", ""));
+        for (const item of config.works) select.append(new Option(`сдача: ${item.title}`, item.slug));
+        select.value = state.data.workSlugs[index] || "";
+        select.addEventListener("change", () => {
+          state.data.workSlugs[index] = select.value;
+          syncHanded();
+          markDirty();
+          renderTable();
+        });
+        li.append(select);
+      }
       list.append(li);
     });
     $("works-count").textContent = works.length
@@ -343,10 +366,21 @@
       throw new Error("внутри журнала неожиданные данные");
     }
     data.group = data.group || "";
+    // Какая работа курса сдаётся в столбец (slug или ""); в старых журналах
+    // поля нет — угадываем по названию столбца.
+    const slugs = Array.isArray(data.workSlugs) ? data.workSlugs : [];
+    data.workSlugs = data.works.map((work, index) =>
+      typeof slugs[index] === "string" ? slugs[index] : guessWork(work),
+    );
     data.students.forEach((student) => {
       student.scores = data.works.map((_, index) => {
         const value = student.scores ? student.scores[index] : null;
         return typeof value === "number" ? value : null;
+      });
+      // Отметка о сдаче: время последней версии, null — не сдано.
+      student.handed = data.works.map((_, index) => {
+        const value = student.handed ? student.handed[index] : null;
+        return typeof value === "string" ? value : null;
       });
     });
     return data;
@@ -481,7 +515,7 @@
       setStatus("Пароли не совпадают.", "error");
       return;
     }
-    const data = { group: group.trim(), works: courseWorks(), students: [] };
+    const data = checkData({ group: group.trim(), works: courseWorks(), students: [] });
     startTeacher(data, generateCode(), password.normalize("NFC"), null);
     showCode();
     setStatus("Журнал создан. Добавьте студентов и нажмите «Сохранить» — до этого он нигде не хранится.", "ok");
@@ -567,7 +601,7 @@
   function addPending() {
     const names = state.pending || [];
     for (const name of names) {
-      state.data.students.push({ name, scores: state.data.works.map(() => null) });
+      state.data.students.push({ name, scores: state.data.works.map(() => null), handed: state.data.works.map(() => null) });
       state.recent.add(nameKey(name));
     }
     sortStudents();
@@ -589,6 +623,7 @@
     }
     student.name = name;
     sortStudents();
+    syncHanded();
     markDirty();
     renderTable();
   }
@@ -608,7 +643,12 @@
       return;
     }
     state.data.works.push(name);
-    state.data.students.forEach((student) => student.scores.push(null));
+    state.data.workSlugs.push(guessWork(name));
+    state.data.students.forEach((student) => {
+      student.scores.push(null);
+      student.handed.push(null);
+    });
+    syncHanded();
     $("work-name").value = "";
     markDirty();
     renderTable();
@@ -625,6 +665,10 @@
     }
     if (name === works[index]) return;
     works[index] = name;
+    if (!state.data.workSlugs[index]) {
+      state.data.workSlugs[index] = guessWork(name);
+      syncHanded();
+    }
     markDirty();
     renderTable();
   }
@@ -638,7 +682,11 @@
       [values[index], values[target]] = [values[target], values[index]];
     };
     swap(works);
-    state.data.students.forEach((student) => swap(student.scores));
+    swap(state.data.workSlugs);
+    state.data.students.forEach((student) => {
+      swap(student.scores);
+      swap(student.handed);
+    });
     markDirty();
     renderTable();
     // Фокус остаётся на той же стрелке, чтобы двигать столбец дальше с
@@ -656,7 +704,11 @@
     const warning = scored ? `\nВ нём баллов: ${scored} — они удалятся.` : "";
     if (!confirm(`Удалить столбец «${work}»?${warning}`)) return;
     state.data.works.splice(index, 1);
-    state.data.students.forEach((student) => student.scores.splice(index, 1));
+    state.data.workSlugs.splice(index, 1);
+    state.data.students.forEach((student) => {
+      student.scores.splice(index, 1);
+      student.handed.splice(index, 1);
+    });
     markDirty();
     renderTable();
   }
@@ -667,6 +719,7 @@
     const data = {
       group: state.data.group,
       works: state.data.works,
+      workSlugs: state.data.workSlugs,
       students: state.data.students,
       submitKey: state.data.submitKey, // открытый: им шифрует страница сдачи
     };
@@ -809,20 +862,43 @@
     return (text || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
   }
 
-  // Какой работе курса соответствует каждый столбец журнала: в названии
-  // столбца есть её название из журнала (поле journal в course.toml); если
-  // подходят несколько («Классификация» и «Классификация текстов»), берётся
-  // самое длинное.
+  // Догадка, какая работа курса сдаётся в столбец: в названии столбца есть
+  // её название из журнала (поле journal в course.toml); если подходят
+  // несколько («Классификация» и «Классификация текстов») — самое длинное.
+  // Преподаватель может поправить выбор в панели столбцов.
+  function guessWork(column) {
+    const name = titleKey(column);
+    let best = null;
+    for (const work of config.works) {
+      const title = titleKey(work.journal);
+      if (title && name.includes(title) && (!best || title.length > titleKey(best.journal).length)) best = work;
+    }
+    return best ? best.slug : "";
+  }
+
   function columnWorks() {
-    return state.data.works.map((column) => {
-      const name = titleKey(column);
-      let best = null;
-      for (const work of config.works) {
-        const title = titleKey(work.journal);
-        if (title && name.includes(title) && (!best || title.length > titleKey(best.journal).length)) best = work;
-      }
-      return best ? best.slug : null;
-    });
+    return state.data.workSlugs;
+  }
+
+  // Отметки «сдано» в журнале — по последним версиям на сервере приёма.
+  // Они сохраняются в журнал, чтобы их видела и группа.
+  function syncHanded() {
+    if (!state.submissions) return 0;
+    const latest = new Map();
+    for (const item of state.submissions) {
+      if (item.header) latest.set(`${nameKey(item.header.name)}|${item.work}`, item.received);
+    }
+    let changed = 0;
+    for (const student of state.data.students) {
+      state.data.workSlugs.forEach((slug, column) => {
+        const value = (slug && latest.get(`${nameKey(student.name)}|${slug}`)) || null;
+        if (student.handed[column] !== value) {
+          student.handed[column] = value;
+          changed += 1;
+        }
+      });
+    }
+    return changed;
   }
 
   function when(iso) {
@@ -876,8 +952,19 @@
         item.latest = true;
       });
       state.submissions = items;
+      const changed = syncHanded();
+      if (changed) {
+        markDirty();
+        renderTable();
+      }
       renderSubmissions();
       renderMarks();
+      if (changed) {
+        setSubmissionsStatus(
+          `${$("submissions-status").textContent} Отметки о сдаче в журнале обновлены — нажмите «Сохранить», чтобы их увидела группа.`,
+          "ok",
+        );
+      }
     } catch (error) {
       setSubmissionsStatus(`Не удалось загрузить сданные работы: ${error.message}. Сервер приёма: ${config.submitUrl}`, "error");
     }

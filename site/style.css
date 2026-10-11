@@ -1155,6 +1155,27 @@ ul.submissions li.broken .who {
   color: var(--faint);
 }
 
+/* Работа сдана, но балла ещё нет: ячейка подсвечена и у группы, и у
+   преподавателя. */
+table.journal td.score.pending {
+  background: var(--send-bg);
+  color: var(--send-ink);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+}
+
+/* Связь столбца с работой курса — под названием столбца. */
+ol.works select {
+  display: block;
+  width: calc(100% - 128px);
+  max-width: 20rem;
+  min-height: 34px;
+  margin-top: 4px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* «сдано» под баллом в журнале преподавателя. */
 table.journal button.handed {
   display: block;
