@@ -14,6 +14,11 @@
  * запускается пересборка сайта. Токен вводит преподаватель, в журнал он
  * не попадает.
  *
+ * Вход преподавателя можно запомнить на устройстве на сутки или неделю.
+ * Пароль при этом не хранится: в IndexedDB лежит неизвлекаемый ключ AES,
+ * полученный из пароля, и срок. Ящик teacher сохраняется с той же солью,
+ * пока пароль не сменится, поэтому этот ключ открывает и новые версии.
+ *
  * Если на сайте включена сдача работ (submit_url в course.toml), в журнале
  * хранится и ключевая пара для неё: открытая половина — в обоих ящиках,
  * закрытая — только в ящике преподавателя. Сданные работы открываются
@@ -42,6 +47,7 @@
 
   const KEY_CODE = "mlg-journal-code";
   const KEY_TOKEN = "mlg-journal-token";
+  const DAY = 24 * 60 * 60 * 1000;
 
   const $ = (id) => document.getElementById(id);
   const encoder = new TextEncoder();
@@ -51,7 +57,7 @@
     mode: null, // "view" | "teacher"
     data: null, // {group, works, students: [{name, scores}]}
     code: null, // код группы, только у преподавателя
-    password: null,
+    teacherKey: null, // {key, salt}: ключ ящика teacher, пароль не хранится
     sha: null, // версия файла в ветке journal, если известна
     loadedText: null, // текст файла, с которого начата правка
     dirty: false,
@@ -448,6 +454,18 @@
     return fetchSiteCopy();
   }
 
+  // Ключ ящика teacher из пароля: с солью из файла, а если файла нет или он
+  // зашифрован с другим числом итераций — с новой солью.
+  async function keyFromPassword(password, sealed, iterations) {
+    const secret = password.normalize("NFC");
+    if (sealed && iterations === ITERATIONS) {
+      const salt = fromBase64(sealed.salt);
+      return { key: await mlgCrypto.deriveBoxKey(secret, salt), salt };
+    }
+    const salt = mlgCrypto.newSalt();
+    return { key: await mlgCrypto.deriveBoxKey(secret, salt), salt };
+  }
+
   async function teacherLogin(password) {
     if (!password) return;
     setBusy(true);
@@ -462,23 +480,25 @@
       }
       checkFile(copy.file);
       setStatus("Расшифровываю…");
-      const payload = await open(copy.file, password.normalize("NFC"), "teacher");
+      // Ключ из пароля и соли файла открывает ящик и потом же его сохраняет.
+      const teacherKey = await keyFromPassword(password, copy.file.teacher, copy.file.kdf.iterations);
+      const sameSalt = toBase64(teacherKey.salt) === copy.file.teacher.salt;
+      const payload = sameSalt
+        ? await mlgCrypto.openBoxWith(copy.file.teacher, teacherKey.key, "teacher")
+        : await open(copy.file, password.normalize("NFC"), "teacher");
       if (!payload) {
         setStatus("Неверный пароль преподавателя.", "error");
         return;
       }
-      const code = payload.code;
-      delete payload.code;
-      startTeacher(checkData(payload), code, password.normalize("NFC"), copy);
-      if (await ensureSubmitKeys()) {
-        setStatus(
-          "Журнал открыт. Для приёма работ создан ключ — нажмите «Сохранить», чтобы страница сдачи заработала.",
-          "ok",
-        );
+      const days = Number($("teacher-remember").value);
+      let note = "";
+      if (days > 0) {
+        const until = await rememberSession(teacherKey, Date.now() + days * DAY);
+        note = until ? ` Вход запомнен на этом устройстве до ${until}.` : "";
       } else {
-        setStatus("Журнал открыт. Изменения сохраняются кнопкой «Сохранить».", "ok");
+        await forgetSession();
       }
-      loadSubmissions();
+      await enterTeacher(payload, teacherKey, copy, note);
     } catch (error) {
       setStatus(`Не удалось открыть журнал: ${error.message}.`, "error");
     } finally {
@@ -486,11 +506,121 @@
     }
   }
 
-  function startTeacher(data, code, password, copy) {
+  async function enterTeacher(payload, teacherKey, copy, note) {
+    const code = payload.code;
+    delete payload.code;
+    startTeacher(checkData(payload), code, teacherKey, copy);
+    if (await ensureSubmitKeys()) {
+      setStatus(
+        `Журнал открыт.${note} Для приёма работ создан ключ — нажмите «Сохранить», чтобы страница сдачи заработала.`,
+        "ok",
+      );
+    } else {
+      setStatus(`Журнал открыт.${note} Изменения сохраняются кнопкой «Сохранить».`, "ok");
+    }
+    loadSubmissions();
+  }
+
+  // ------------------------------------------- запомненный вход (IndexedDB)
+
+  function sessionStore(mode, action) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("mlg-journal", 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("session");
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction("session", mode);
+        const result = action(transaction.objectStore("session"));
+        transaction.oncomplete = () => {
+          db.close();
+          resolve(result.result);
+        };
+        transaction.onerror = () => reject(transaction.error);
+      };
+    });
+  }
+
+  async function loadSession() {
+    try {
+      return (await sessionStore("readonly", (store) => store.get("teacher"))) || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function untilText(time) {
+    return new Date(time).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  }
+
+  // Возвращает «до когда» или null, если браузер не дал сохранить ключ.
+  async function rememberSession(teacherKey, expires) {
+    try {
+      await sessionStore("readwrite", (store) =>
+        store.put({ key: teacherKey.key, salt: toBase64(teacherKey.salt), expires }, "teacher"),
+      );
+      return untilText(expires);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function forgetSession() {
+    try {
+      await sessionStore("readwrite", (store) => store.delete("teacher"));
+    } catch (error) {
+      /* хранилище недоступно — забывать нечего */
+    }
+  }
+
+  // После смены пароля и сохранения запомненный ключ заменяется новым,
+  // срок остаётся прежним.
+  async function refreshSession() {
+    const saved = await loadSession();
+    if (saved && saved.expires > Date.now() && saved.salt !== toBase64(state.teacherKey.salt)) {
+      await rememberSession(state.teacherKey, saved.expires);
+    }
+  }
+
+  async function resumeTeacher() {
+    const saved = await loadSession();
+    if (!saved) return false;
+    if (!(saved.expires > Date.now()) || !saved.key) {
+      await forgetSession();
+      return false;
+    }
+    setBusy(true);
+    setStatus("Открываю журнал преподавателя…");
+    try {
+      const copy = await loadForTeacher();
+      if (!copy) {
+        setStatus("");
+        return false;
+      }
+      checkFile(copy.file);
+      const payload =
+        copy.file.teacher.salt === saved.salt ? await mlgCrypto.openBoxWith(copy.file.teacher, saved.key, "teacher") : null;
+      if (!payload) {
+        await forgetSession();
+        $("teacher-entry").open = true;
+        setStatus("Пароль преподавателя сменили — войдите заново.", "error");
+        return true;
+      }
+      await enterTeacher(payload, { key: saved.key, salt: fromBase64(saved.salt) }, copy, ` Вход запомнен до ${untilText(saved.expires)}.`);
+      return true;
+    } catch (error) {
+      setStatus(`Не удалось открыть журнал: ${error.message}.`, "error");
+      return true;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function startTeacher(data, code, teacherKey, copy) {
     state.mode = "teacher";
     state.data = data;
     state.code = code;
-    state.password = password;
+    state.teacherKey = teacherKey;
     state.sha = copy ? copy.sha : null;
     state.loadedText = copy ? copy.text : null;
     state.dirty = !copy;
@@ -506,7 +636,7 @@
     renderTable();
   }
 
-  function createJournal(group, password, again) {
+  async function createJournal(group, password, again) {
     if (password.length < MIN_PASSWORD) {
       setStatus(`Пароль слишком короткий: нужно не меньше ${MIN_PASSWORD} знаков.`, "error");
       return;
@@ -516,7 +646,7 @@
       return;
     }
     const data = checkData({ group: group.trim(), works: courseWorks(), students: [] });
-    startTeacher(data, generateCode(), password.normalize("NFC"), null);
+    startTeacher(data, generateCode(), await keyFromPassword(password, null, ITERATIONS), null);
     showCode();
     setStatus("Журнал создан. Добавьте студентов и нажмите «Сохранить» — до этого он нигде не хранится.", "ok");
     ensureSubmitKeys();
@@ -553,7 +683,7 @@
     setStatus("Код изменён. Нажмите «Сохранить», чтобы он начал действовать.", "ok");
   }
 
-  function changePassword(password, again) {
+  async function changePassword(password, again) {
     if (password.length < MIN_PASSWORD) {
       setStatus(`Пароль слишком короткий: нужно не меньше ${MIN_PASSWORD} знаков.`, "error");
       return;
@@ -562,7 +692,8 @@
       setStatus("Пароли не совпадают.", "error");
       return;
     }
-    state.password = password.normalize("NFC");
+    // Новая соль: старый ключ, запомненный на других устройствах, не подойдёт.
+    state.teacherKey = await keyFromPassword(password, null, ITERATIONS);
     markDirty();
     $("new-password").value = "";
     $("new-password2").value = "";
@@ -727,7 +858,12 @@
       format: FORMAT,
       kdf: { name: "PBKDF2", hash: "SHA-256", iterations: ITERATIONS },
       view: await seal(data, state.code, "view"),
-      teacher: await seal({ ...data, code: state.code, submitPrivate: state.data.submitPrivate }, state.password, "teacher"),
+      teacher: await mlgCrypto.sealBoxWith(
+        { ...data, code: state.code, submitPrivate: state.data.submitPrivate },
+        state.teacherKey.key,
+        state.teacherKey.salt,
+        "teacher",
+      ),
     };
     return JSON.stringify(file, null, 1) + "\n";
   }
@@ -765,6 +901,7 @@
       if (!token()) {
         download(text);
         state.dirty = false;
+        await refreshSession();
         setStatus(
           "Токен не задан, поэтому файл скачан. Положите его в ветку journal репозитория " +
             "(GitHub → ветка journal → Add file → Upload files), затем запустите пересборку: " +
@@ -799,6 +936,7 @@
       state.sha = result.content.sha;
       state.loadedText = text;
       state.dirty = false;
+      await refreshSession();
       state.recent.clear();
       renderTable();
 
@@ -1286,9 +1424,11 @@
     showTokenState();
   }
 
-  function logout() {
+  // «Выйти» забывает и запомненный вход на этом устройстве.
+  async function logout() {
     if (state.dirty && !confirm("Есть несохранённые изменения. Выйти без сохранения?")) return;
     state.dirty = false;
+    await forgetSession();
     location.replace(location.pathname);
   }
 
@@ -1368,7 +1508,7 @@
     });
   }
 
-  function start() {
+  async function start() {
     if (!window.crypto || !crypto.subtle || !window.mlgCrypto) {
       setStatus("Браузер не поддерживает нужное шифрование. Откройте журнал в свежем Chrome, Firefox, Safari или Edge.", "error");
       return;
@@ -1377,9 +1517,13 @@
     fillSubmissionWorks();
     const fromLink = decodeURIComponent(location.hash.slice(1));
     const remembered = storageGet("localStorage", KEY_CODE);
+    // Ссылка с кодом — явная просьба открыть журнал группы; иначе сначала
+    // запомненный вход преподавателя, потом запомненный код.
     if (fromLink) {
       $("view-code").value = fromLink;
       openView(fromLink, false);
+    } else if (await resumeTeacher()) {
+      return;
     } else if (remembered) {
       $("view-remember").checked = true;
       openView(remembered, true);

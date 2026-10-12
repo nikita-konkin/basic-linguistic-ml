@@ -1239,6 +1239,12 @@ select {
   max-width: 32rem;
 }
 
+select.inline {
+  width: auto;
+  min-height: 36px;
+  padding: 0.2rem 0.5rem;
+}
+
 button.link {
   border: none;
   background: none;

@@ -74,10 +74,11 @@
     return encoder.encode(`mlg-journal/${JOURNAL_FORMAT}/${box}`);
   }
 
-  async function sealBox(payload, secret, box) {
-    const salt = random(16);
+  // Ящик готовым ключом. Так журнал преподавателя сохраняет ящик teacher:
+  // соль остаётся прежней, пока не сменится пароль, поэтому ключ, запомненный
+  // на устройстве, открывает и следующие версии файла. IV каждый раз новый.
+  async function sealBoxWith(payload, key, salt, box) {
     const iv = random(12);
-    const key = await deriveKey(secret, salt, ITERATIONS);
     const data = await crypto.subtle.encrypt(
       { name: "AES-GCM", iv, additionalData: boxLabel(box) },
       key,
@@ -86,10 +87,8 @@
     return { salt: toBase64(salt), iv: toBase64(iv), data: toBase64(new Uint8Array(data)) };
   }
 
-  // null — неверный код или пароль.
-  async function openBox(file, secret, box) {
-    const sealed = file[box];
-    const key = await deriveKey(secret, fromBase64(sealed.salt), file.kdf.iterations);
+  // null — ключ не подходит (неверный код или пароль).
+  async function openBoxWith(sealed, key, box) {
     let plain;
     try {
       plain = await crypto.subtle.decrypt(
@@ -101,6 +100,16 @@
       return null;
     }
     return JSON.parse(decoder.decode(plain));
+  }
+
+  async function sealBox(payload, secret, box) {
+    const salt = random(16);
+    return sealBoxWith(payload, await deriveKey(secret, salt, ITERATIONS), salt, box);
+  }
+
+  async function openBox(file, secret, box) {
+    const sealed = file[box];
+    return openBoxWith(sealed, await deriveKey(secret, fromBase64(sealed.salt), file.kdf.iterations), box);
   }
 
   // --------------------------------------------------------- код группы
@@ -250,6 +259,11 @@
     JOURNAL_FORMAT,
     sealBox,
     openBox,
+    // Ключ из пароля: неизвлекаемый CryptoKey, его можно хранить в IndexedDB.
+    deriveBoxKey: (secret, salt, iterations = ITERATIONS) => deriveKey(secret, salt, iterations),
+    newSalt: () => random(16),
+    sealBoxWith,
+    openBoxWith,
     CODE_LENGTH,
     generateCode,
     canonicalCode,

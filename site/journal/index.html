@@ -55,6 +55,16 @@
 <input type="password" id="teacher-password" placeholder="Пароль преподавателя" autocomplete="current-password">
 <button class="primary" type="submit">Войти</button>
 </div>
+<div class="row" style="margin-top:0.5rem">
+<label for="teacher-remember" class="small">Не выходить на этом устройстве:</label>
+<select id="teacher-remember" class="inline">
+<option value="0">не запоминать</option>
+<option value="1" selected>сутки</option>
+<option value="7">неделю</option>
+</select>
+</div>
+<p class="muted small" style="margin:0.4rem 0 0">Пароль не сохраняется — только ключ журнала,
+и только в этом браузере. На чужом компьютере выберите «не запоминать». «Выйти» забывает вход.</p>
 </form>
 <form id="create-form" class="panel" autocomplete="off" hidden>
 <h2>Создать журнал</h2>
