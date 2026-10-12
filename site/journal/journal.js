@@ -982,6 +982,7 @@
     list.replaceChildren();
     for (const item of state.shown) {
       const li = cell("li", null, item.latest ? "" : "old");
+      li.dataset.id = item.id;
       const text = cell("div", null, "text");
       const button = cell("button", "скачать");
       button.type = "button";
@@ -990,11 +991,16 @@
         who.append(cell("b", item.header.name));
         if (!known.has(nameKey(item.header.name))) who.append(" ", cell("span", "нет в журнале", "flag"));
         if (!item.latest) who.append(" ", cell("span", "старая версия", "flag quiet"));
+        const what =
+          item.header.kind === "text"
+            ? `${workTitle(item.work)} · текстовый ответ`
+            : `${workTitle(item.work)} · ${item.header.filename} · ${sizeText(item.header.size)}`;
         text.append(
           who,
-          cell("div", `${workTitle(item.work)} · ${item.header.filename} · ${sizeText(item.header.size)}`, "what"),
+          cell("div", what, "what"),
           cell("div", [when(item.received), checkText(item.header.check)].filter(Boolean).join(" · "), "meta"),
         );
+
         button.setAttribute("aria-label", `Скачать: ${item.header.name}, ${item.header.filename}`);
         button.addEventListener("click", () => downloadSubmission(item));
       } else {
@@ -1007,6 +1013,7 @@
         button.dataset.off = "1";
       }
       li.append(text, button);
+      if (item.header && item.header.kind === "text") li.append(answerBlock(item));
       list.append(li);
     }
     const people = new Set(items.filter((item) => item.header).map((item) => `${nameKey(item.header.name)}|${item.work}`));
@@ -1040,10 +1047,82 @@
       if (!entry) return;
       const mark = cell("button", "сдано", "handed");
       mark.type = "button";
-      mark.title = `Сдано ${when(entry.item.received)}${entry.count > 1 ? `, версий: ${entry.count}` : ""}. Нажмите, чтобы скачать.`;
-      mark.addEventListener("click", () => downloadSubmission(entry.item));
+      const textual = entry.item.header.kind === "text";
+      mark.title =
+        `Сдано ${when(entry.item.received)}${entry.count > 1 ? `, версий: ${entry.count}` : ""}. ` +
+        (textual ? "Нажмите, чтобы посмотреть ответ." : "Нажмите, чтобы скачать.");
+      mark.addEventListener("click", () => (textual ? revealSubmission(entry.item) : downloadSubmission(entry.item)));
       td.append(mark);
     });
+  }
+
+  // Текстовый ответ: ссылки кликабельны, остальное — как есть. Текст пишет
+  // студент, поэтому ссылками становятся только http(s)-адреса, и в DOM он
+  // попадает только как текст.
+  const LINK = /https?:\/\/[^\s<>"«»]+[^\s<>"«».,;:!?)]/g;
+
+  function linkified(text) {
+    const box = cell("div", null, "answer");
+    let last = 0;
+    for (const match of text.matchAll(LINK)) {
+      box.append(text.slice(last, match.index));
+      const link = cell("a", match[0]);
+      link.href = match[0];
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      box.append(link);
+      last = match.index + match[0].length;
+    }
+    box.append(text.slice(last));
+    return box;
+  }
+
+  // Длинный ответ свёрнут до нескольких строк; целиком он лежит в конверте,
+  // в заголовке — только начало (header.truncated).
+  function answerBlock(item) {
+    const wrap = cell("div", null, "reply");
+    const preview = item.header.text || "";
+    let box = linkified(preview);
+    wrap.append(box);
+    const long = item.header.truncated || preview.length > 320 || preview.split("\n").length > 5;
+    if (!long) {
+      box.classList.add("full");
+      return wrap;
+    }
+    const more = cell("button", "показать полностью", "link");
+    more.type = "button";
+    more.addEventListener("click", async () => {
+      more.dataset.off = "1";
+      more.disabled = true;
+      try {
+        if (item.header.truncated) {
+          const opened = await fetchSubmission(item);
+          const full = linkified(new TextDecoder().decode(opened.file));
+          box.replaceWith(full);
+          box = full;
+        }
+        box.classList.add("full");
+        more.remove();
+      } catch (error) {
+        setSubmissionsStatus(`Не удалось открыть ответ: ${error.message}.`, "error");
+        more.dataset.off = "";
+        more.disabled = false;
+      }
+    });
+    wrap.append(more);
+    return wrap;
+  }
+
+  // Метка «сдано» у текстового ответа показывает его в списке сдач.
+  function revealSubmission(item) {
+    $("submissions-work").value = "";
+    $("submissions-latest").checked = true;
+    renderSubmissions();
+    const li = [...$("submissions-list").children].find((row) => row.dataset.id === item.id);
+    if (!li) return;
+    li.scrollIntoView({ behavior: "smooth", block: "center" });
+    li.classList.add("flash");
+    setTimeout(() => li.classList.remove("flash"), 1600);
   }
 
   async function fetchSubmission(item) {

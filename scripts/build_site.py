@@ -340,7 +340,7 @@ def work_panel(index: int, lab: dict, course: dict, files: dict[str, dict]) -> s
         playground = next(item for item in course["playgrounds"] if item["url"] == lab["playground"])
         rows.append(file_row("web", f"Интерактивная страница «{playground['title']}»", playground["url"]))
     if course.get("submit_url"):
-        rows.append(file_row("send", "Сдать работу", f"submit/?work={slug}", desc="файл шифруется в браузере"))
+        rows.append(file_row("send", "Сдать работу", f"submit/?work={slug}", desc="файл или ссылка, шифруется в браузере"))
     kwic = ""
     if lab.get("kwic"):
         left, key, right = lab["kwic"]

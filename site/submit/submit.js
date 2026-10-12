@@ -1,4 +1,4 @@
-/* Сдача работы: код группы → ФИО → работа → файл → квитанция.
+/* Сдача работы: код группы → ФИО → работа → файл или текст → квитанция.
  *
  * По коду группы страница открывает журнал (тот же ящик view, что видит
  * группа), берёт из него список ФИО и открытый ключ преподавателя. Файл
@@ -9,6 +9,10 @@
  * Ноутбук до отправки проверяется: запущены ли ячейки, нет ли ошибок в
  * выводе, совпадает ли заголовок с выбранной работой. Это подсказки
  * студенту; отправке они не мешают, кроме явно битого файла.
+ *
+ * Вместо файла можно отправить текст — обычно ссылку на Colab или
+ * репозиторий. Он уходит тем же конвертом (как «ответ.txt»), а его начало
+ * кладётся и в заголовок, чтобы журнал показывал ответ прямо в списке.
  */
 (function () {
   "use strict";
@@ -23,6 +27,16 @@
   const KEY_CODE = "mlg-journal-code"; // общий с журналом
   const KEY_NAME = "mlg-submit-name";
 
+  const MAX_TEXT = 20000;
+  // Столько знаков текстового ответа идёт и в заголовок конверта: журнал
+  // показывает его в списке сдач, не скачивая ответы. Заголовок на сервере
+  // ограничен 8 КБ, поэтому с запасом.
+  const PREVIEW = 1500;
+  const MAX_HEADER = 6000;
+  const URL_PATTERN = /https?:\/\/[^\s<>"«»]+[^\s<>"«».,;:!?)]/g;
+  // Где доступ по ссылке по умолчанию закрыт.
+  const CLOSED_BY_DEFAULT = /(^|\.)((colab\.research|drive|docs)\.google\.com|disk\.yandex\.(ru|com)|onedrive\.live\.com|1drv\.ms)$/;
+
   const $ = (id) => document.getElementById(id);
   const { canonicalCode, formatCode, CODE_LENGTH } = mlgCrypto;
 
@@ -31,7 +45,8 @@
     names: [],
     submitKey: null, // открытый ключ преподавателя (JWK)
     file: null, // {name, bytes, type, check}
-    problems: [], // проверки файла: [{level, text}]
+    fileProblems: [], // проверки файла: [{level, text}]
+    problems: [], // проверки того, что сейчас будет отправлено
   };
 
   function readConfig() {
@@ -248,9 +263,9 @@
 
   async function chooseFile(file) {
     state.file = null;
-    state.problems = [];
+    state.fileProblems = [];
     if (!file) {
-      renderChecks();
+      refreshProblems();
       return;
     }
     const kind = extension(file.name);
@@ -273,8 +288,8 @@
       }
     }
     state.file = { name: file.name, size: file.size, type: TYPES[kind] || "", bytes, check, kind };
-    state.problems = problems;
-    renderChecks();
+    state.fileProblems = problems;
+    refreshProblems();
   }
 
   // Проверка ноутбука зависит от выбранной работы: пересчитать при смене.
@@ -283,7 +298,52 @@
     if (!file || file.kind !== "ipynb" || !file.bytes) return;
     const result = checkNotebook(new TextDecoder().decode(file.bytes), $("work").value);
     file.check = result.check;
-    state.problems = result.problems;
+    state.fileProblems = result.problems;
+    refreshProblems();
+  }
+
+  // ------------------------------------------------- текстовый ответ
+
+  function mode() {
+    return document.querySelector('input[name="mode"]:checked').value;
+  }
+
+  function checkAnswer(text) {
+    const answer = text.trim();
+    if (!answer) return [];
+    if (answer.length > MAX_TEXT) {
+      return [{ level: "error", text: `Текст длиннее ${MAX_TEXT} знаков — пришлите его файлом.` }];
+    }
+    const links = answer.match(URL_PATTERN) || [];
+    if (!links.length) return [{ level: "ok", text: `Текстовый ответ, знаков: ${answer.length}.` }];
+    const hosts = [
+      ...new Set(
+        links
+          .map((link) => {
+            try {
+              return new URL(link).hostname;
+            } catch (error) {
+              return "";
+            }
+          })
+          .filter(Boolean),
+      ),
+    ];
+    const problems = [{ level: "ok", text: `Ссылок: ${links.length} (${hosts.join(", ")}).` }];
+    if (hosts.some((host) => CLOSED_BY_DEFAULT.test(host))) {
+      problems.push({
+        level: "info",
+        text: "Здесь доступ по ссылке по умолчанию закрыт. Проверьте, что открыт доступ «Все, у кого есть ссылка», иначе преподаватель работу не увидит.",
+      });
+    }
+    return problems;
+  }
+
+  function refreshProblems() {
+    const text = mode() === "text";
+    $("mode-file").hidden = text;
+    $("mode-text").hidden = !text;
+    state.problems = text ? checkAnswer($("answer").value) : state.fileProblems;
     renderChecks();
   }
 
@@ -294,7 +354,7 @@
     $("drop-main").textContent = file ? `${file.name} · ${sizeText(file.size)}` : "Перетащите файл сюда или нажмите, чтобы выбрать";
     $("drop").classList.toggle("chosen", Boolean(file));
     for (const problem of state.problems) {
-      const mark = { ok: "✓", warn: "!", error: "×" }[problem.level];
+      const mark = { ok: "✓", info: "i", warn: "!", error: "×" }[problem.level];
       const li = element("li", null, problem.level);
       li.append(element("span", mark, "mark"), element("span", problem.text));
       list.append(li);
@@ -304,37 +364,68 @@
 
   // ------------------------------------------------------------ отправка
 
+  // Что уходит в конверт: файл или текст, в одном виде.
+  function answer() {
+    if (mode() === "text") {
+      const text = $("answer").value.trim();
+      if (!text) return null;
+      return {
+        kind: "text",
+        bytes: new TextEncoder().encode(text),
+        filename: "ответ.txt",
+        type: "text/plain; charset=utf-8",
+        check: null,
+        text,
+      };
+    }
+    const file = state.file;
+    if (!file) return null;
+    return { kind: "file", bytes: file.bytes, filename: file.name.normalize("NFC").slice(-200), type: file.type, check: file.check };
+  }
+
   async function send() {
     const name = $("student").value;
     const slug = $("work").value;
-    const file = state.file;
+    const reply = answer();
     if (!name) return setStatus("Выберите себя в списке группы.", "error");
     if (!slug) return setStatus("Выберите работу.", "error");
-    if (!file) return setStatus("Выберите файл с работой.", "error");
+    if (!reply) {
+      return setStatus(mode() === "text" ? "Напишите ответ или вставьте ссылку." : "Выберите файл с работой.", "error");
+    }
     if (state.problems.some((problem) => problem.level === "error")) {
-      return setStatus("Этот файл отправить нельзя — см. сообщения под ним.", "error");
+      return setStatus("Это отправить нельзя — см. сообщения ниже.", "error");
     }
     const warnings = state.problems.filter((problem) => problem.level === "warn").length;
-    if (warnings && !confirm(`У файла есть замечания (${warnings}). Всё равно отправить?`)) return;
+    if (warnings && !confirm(`Есть замечания (${warnings}). Всё равно отправить?`)) return;
 
     storageSet(KEY_NAME, name);
     const button = $("btn-send");
     button.disabled = true;
     setStatus("Шифрую…");
     try {
-      const sha256 = await mlgCrypto.sha256Hex(file.bytes);
+      const sha256 = await mlgCrypto.sha256Hex(reply.bytes);
       const header = {
         v: 1,
         name,
         work: slug,
-        filename: file.name.normalize("NFC").slice(-200),
-        type: file.type,
-        size: file.bytes.length,
+        kind: reply.kind,
+        filename: reply.filename,
+        type: reply.type,
+        size: reply.bytes.length,
         sha256,
         sent: new Date().toISOString(),
-        check: file.check,
+        check: reply.check,
       };
-      const envelope = await mlgCrypto.sealSubmission(state.submitKey, slug, header, file.bytes);
+      if (reply.kind === "text") {
+        let preview = reply.text.slice(0, PREVIEW);
+        header.text = preview;
+        while (new TextEncoder().encode(JSON.stringify(header)).length > MAX_HEADER) {
+          preview = preview.slice(0, Math.floor(preview.length * 0.8));
+          header.text = preview;
+        }
+        header.truncated = preview.length < reply.text.length;
+      }
+      const envelope = await mlgCrypto.sealSubmission(state.submitKey, slug, header, reply.bytes);
       setStatus("Отправляю…");
       let response;
       try {
@@ -346,9 +437,9 @@
       } catch (error) {
         throw new Error("сервер приёма не отвечает. Проверьте интернет и попробуйте ещё раз через несколько минут");
       }
-      const answer = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(answer.error || `сервер ответил ${response.status}`);
-      showReceipt(header, answer);
+      const receipt = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(receipt.error || `сервер ответил ${response.status}`);
+      showReceipt(header, receipt);
       setStatus("");
     } catch (error) {
       setStatus(`Работа не отправлена: ${error.message}.`, "error");
@@ -361,7 +452,9 @@
     const item = work(header.work);
     $("r-name").textContent = header.name;
     $("r-work").textContent = item ? item.title : header.work;
-    $("r-file").textContent = `${header.filename} · ${sizeText(header.size)}`;
+    const text = header.kind === "text";
+    $("r-file-label").textContent = text ? "Ответ" : "Файл";
+    $("r-file").textContent = text ? `текст, знаков: ${$("answer").value.trim().length}` : `${header.filename} · ${sizeText(header.size)}`;
     $("r-time").textContent = new Date(receipt.received).toLocaleString("ru-RU", {
       timeZone: "Europe/Moscow",
       day: "numeric",
@@ -378,6 +471,7 @@
 
   function again() {
     $("file").value = "";
+    $("answer").value = "";
     chooseFile(null);
     $("receipt").hidden = true;
     $("submit-form").hidden = false;
@@ -402,6 +496,8 @@
       history.replaceState(null, "", slug ? `?work=${encodeURIComponent(slug)}` : location.pathname);
     });
     $("file").addEventListener("change", () => chooseFile($("file").files[0]));
+    document.querySelectorAll('input[name="mode"]').forEach((radio) => radio.addEventListener("change", refreshProblems));
+    $("answer").addEventListener("input", refreshProblems);
 
     const drop = $("drop");
     ["dragenter", "dragover"].forEach((type) =>
@@ -451,7 +547,7 @@
   }
 
   // Для проверки в консоли: разбор ноутбука.
-  window.mlgSubmit = { checkNotebook };
+  window.mlgSubmit = { checkNotebook, checkAnswer };
 
   start();
 })();

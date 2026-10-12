@@ -57,16 +57,29 @@
 </section>
 
 <section class="panel">
-<h2><span class="step">4</span>Файл</h2>
+<h2><span class="step">4</span>Ответ</h2>
+<div class="modes" role="radiogroup" aria-label="Что сдаёте">
+<label class="mode"><input type="radio" name="mode" value="file" checked> файл</label>
+<label class="mode"><input type="radio" name="mode" value="text"> текст или ссылка</label>
+</div>
+<div id="mode-file">
 <label class="drop" id="drop" for="file">
 <input type="file" id="file" accept=".ipynb,.pdf,.docx,.zip">
 <span class="drop-main" id="drop-main">Перетащите файл сюда или нажмите, чтобы выбрать</span>
 <span class="drop-hint">ноутбук .ipynb, а также .pdf, .docx или .zip · до 10 МБ</span>
 </label>
-<ul class="checks" id="checks" hidden></ul>
 <p class="muted small" style="margin:0.5rem 0 0">Ноутбук проверяется ещё до отправки: запущены
 ли ячейки, нет ли ошибок, та ли это работа. Предупреждения не мешают отправить — но лучше
 сначала исправить.</p>
+</div>
+<div id="mode-text" hidden>
+<label for="answer" class="sr-only">Текст ответа</label>
+<textarea id="answer" maxlength="20000"
+  placeholder="Например, ссылка на ноутбук в Google Colab или на репозиторий — и пара слов о том, что там"></textarea>
+<p class="muted small" style="margin:0.5rem 0 0">Если отправляете ссылку, откройте по ней
+доступ: в Colab и Google Диске — «Настройки доступа → Все, у кого есть ссылка».</p>
+</div>
+<ul class="checks" id="checks" hidden></ul>
 </section>
 
 <div class="row send">
@@ -79,7 +92,7 @@
 <dl class="receipt-list">
 <dt>ФИО</dt><dd id="r-name"></dd>
 <dt>Работа</dt><dd id="r-work"></dd>
-<dt>Файл</dt><dd id="r-file"></dd>
+<dt id="r-file-label">Файл</dt><dd id="r-file"></dd>
 <dt>Получена</dt><dd id="r-time"></dd>
 <dt>Номер</dt><dd class="mono" id="r-id"></dd>
 <dt>Контрольная сумма</dt><dd class="mono" id="r-sum"></dd>

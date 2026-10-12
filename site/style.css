@@ -1132,6 +1132,38 @@ ul.submissions .meta {
   color: var(--faint);
 }
 
+/* Текстовый ответ студента — на всю ширину строки, переносы как в
+   оригинале; длинный свёрнут до нескольких строк. */
+ul.submissions li {
+  flex-wrap: wrap;
+}
+
+ul.submissions .reply {
+  flex-basis: 100%;
+}
+
+ul.submissions .answer {
+  margin: 0.1rem 0 0.2rem;
+  padding: 0.45rem 0.6rem;
+  border-left: 3px solid var(--line);
+  background: var(--code);
+  border-radius: 0 6px 6px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+  max-height: 8.6em;
+  overflow: hidden;
+}
+
+ul.submissions .answer.full {
+  max-height: none;
+}
+
+ul.submissions li.flash {
+  background: var(--send-bg);
+  transition: background 0.3s;
+}
+
 ul.submissions li.old .who b {
   font-weight: 400;
   color: var(--muted);
@@ -1286,6 +1318,37 @@ ul.checks .mark {
 
 ul.checks li.ok .mark {
   color: var(--moss);
+}
+
+ul.checks li.info .mark {
+  background: var(--code);
+  color: var(--navy);
+  font-style: italic;
+}
+
+/* Файл или текст: два переключателя-«таблетки». */
+.modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 0.7rem;
+}
+
+label.mode {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.25rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+label.mode:has(input:checked) {
+  border-color: var(--navy);
+  background: var(--code);
+  font-weight: 600;
 }
 
 ul.checks li.warn .mark {
