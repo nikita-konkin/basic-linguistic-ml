@@ -246,21 +246,24 @@ python -m http.server -d dist 8000
 нельзя.
 
 Кнопка «Сохранить» кладёт новый `journal.json` в ветку `journal` через
-GitHub API и запускает пересборку сайта; группа видит изменения через
-1–2 минуты. Для этого нужен токен:
+GitHub API. Сайт после этого пересобирается сам: в ветке `journal` есть свой
+workflow (`.github/workflows/journal.yml`), который на каждое обновление
+журнала запускает «Сайт курса». Группа видит изменения через 1–2 минуты.
+Для сохранения кнопкой нужен токен:
 
 1. GitHub → Settings → Developer settings → Personal access tokens →
    **Fine-grained tokens** → Generate new token.
 2. Repository access: **Only select repositories** → `basic-linguistic-ml`.
-3. Permissions → Repository: **Contents — Read and write**,
-   **Actions — Read and write**.
+3. Permissions → Repository: **Contents — Read and write**. Права Actions
+   больше не нужны: пересборку запускает workflow ветки `journal`.
 4. Expiration — до конца семестра.
 
 Токен вводится на странице журнала после входа. По умолчанию он живёт до
 закрытия вкладки, с галочкой — хранится в браузере. В журнал он не
-попадает. Без токена «Сохранить» скачивает `journal.json`, и его можно
-загрузить в ветку `journal` вручную, а затем запустить Actions → «Сайт
-курса» → Run workflow.
+попадает. Без токена «Сохранить» скачивает `journal.json`; его можно
+загрузить в ветку `journal` вручную (Add file → Upload files) под любым
+именем вида `journal….json` — `journal-3.json`, `journal (1).json`. Workflow
+ветки проверит файл, переименует его в `journal.json` и пересоберёт сайт.
 
 Вход преподавателя можно запомнить на устройстве на сутки или неделю
 («Не выходить на этом устройстве»). Пароль при этом не сохраняется: в

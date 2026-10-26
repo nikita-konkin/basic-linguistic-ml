@@ -10,9 +10,9 @@
  * 31-символьного алфавита (около 59 бит): перебрать его по публичному
  * файлу нереально. Расшифрованные данные живут только в памяти вкладки.
  *
- * Сохранение — через GitHub API: файл ложится в ветку `journal`, затем
- * запускается пересборка сайта. Токен вводит преподаватель, в журнал он
- * не попадает.
+ * Сохранение — через GitHub API: файл ложится в ветку `journal`, а сайт
+ * пересобирает workflow этой ветки (.github/workflows/journal.yml там же).
+ * Токен вводит преподаватель, в журнал он не попадает.
  *
  * Вход преподавателя можно запомнить на устройстве на сутки или неделю.
  * Пароль при этом не хранится: в IndexedDB лежит неизвлекаемый ключ AES,
@@ -31,7 +31,6 @@
   const REPO = "basic-linguistic-ml";
   const BRANCH = "journal";
   const FILE = "journal.json";
-  const WORKFLOW = "site.yml";
   const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
 
   const FORMAT = mlgCrypto.JOURNAL_FORMAT;
@@ -903,9 +902,9 @@
         state.dirty = false;
         await refreshSession();
         setStatus(
-          "Токен не задан, поэтому файл скачан. Положите его в ветку journal репозитория " +
-            "(GitHub → ветка journal → Add file → Upload files), затем запустите пересборку: " +
-            "Actions → «Сайт курса» → Run workflow.",
+          "Токен не задан, поэтому файл скачан. Загрузите его в ветку journal репозитория " +
+            "(GitHub → ветка journal → Add file → Upload files) под любым именем — " +
+            "сайт пересоберётся сам, группа увидит изменения через 1–2 минуты.",
           "ok",
         );
         return;
@@ -939,20 +938,8 @@
       await refreshSession();
       state.recent.clear();
       renderTable();
-
-      const dispatch = await github(`/actions/workflows/${WORKFLOW}/dispatches`, {
-        method: "POST",
-        body: JSON.stringify({ ref: "main" }),
-      });
-      if (dispatch.ok) {
-        setStatus("Сохранено. Группа увидит изменения на сайте через 1–2 минуты.", "ok");
-      } else {
-        setStatus(
-          "Журнал сохранён, но сайт не пересобрался: у токена, видимо, нет права Actions — Read and write. " +
-            "Пересоберите вручную: Actions → «Сайт курса» → Run workflow.",
-          "error",
-        );
-      }
+      // Сайт пересобирает workflow ветки journal — по самой записи файла.
+      setStatus("Сохранено. Группа увидит изменения на сайте через 1–2 минуты.", "ok");
     } catch (error) {
       if (text) download(text);
       setStatus(`Не удалось сохранить: ${error.message}.${text ? " Ваш вариант скачан файлом." : ""}`, "error");

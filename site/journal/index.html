@@ -170,10 +170,11 @@
 <div class="panel">
 <h2>Сохранение на GitHub</h2>
 <p class="small">«Сохранить» записывает зашифрованный журнал в ветку <code>journal</code>
-репозитория и пересобирает сайт; группа увидит изменения через 1–2 минуты. Нужен
-fine-grained токен GitHub: доступ только к репозиторию <code>basic-linguistic-ml</code>,
-права <b>Contents</b> и <b>Actions</b> — Read and write. Без токена «Сохранить»
-скачивает файл.</p>
+репозитория, после чего сайт пересобирается сам; группа увидит изменения через
+1–2 минуты. Нужен fine-grained токен GitHub: доступ только к репозиторию
+<code>basic-linguistic-ml</code>, право <b>Contents</b> — Read and write. Без токена
+«Сохранить» скачивает файл; его можно загрузить в ветку <code>journal</code> под любым
+именем, и сайт тоже пересоберётся сам.</p>
 <div class="row">
 <label for="token-input" class="sr-only">Токен GitHub</label>
 <input type="password" id="token-input" placeholder="github_pat_…" autocomplete="off">
