@@ -1,0 +1,48 @@
+name: Журнал → сайт
+
+# Ветка journal: после каждого обновления журнала пересобрать сайт курса.
+# Журнал, загруженный через GitHub под другим именем (journal-3.json,
+# «journal (1).json»), сначала становится journal.json — сайт берёт только
+# его (.github/pick_journal.py). Сборку запускает workflow «Сайт курса» в
+# main; GitHub разрешает запустить его отсюда токеном самого workflow.
+
+on:
+  push:
+    branches: [journal]
+    paths:
+      - "journal*.json"
+      - "Journal*.json"
+
+permissions:
+  contents: write # переименовать загруженный файл
+  actions: write # запустить сборку сайта
+
+concurrency:
+  group: journal
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    name: Обновить сайт
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Загруженный файл → journal.json
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          python3 .github/pick_journal.py "$BEFORE"
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Журнал: загруженный файл стал journal.json"
+            git push origin HEAD:journal
+          fi
+
+      - name: Пересобрать сайт
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main --repo "$GITHUB_REPOSITORY"
