@@ -320,3 +320,24 @@ def test_crypto_is_shared(dist):
     crypto = (dist / "crypto.js").read_text(encoding="utf-8")
     for marker in ("PBKDF2", "ECDH", "HKDF", "AES-GCM", "MLGS1", "mlg-journal/", "mlg-submit/1"):
         assert marker in crypto, marker
+
+
+def test_every_page_counts_its_visit(dist):
+    assert (dist / "visits.js").is_file()
+    for page, prefix in (
+        (dist / "index.html", ""),
+        (dist / "journal" / "index.html", "../"),
+        (dist / "submit" / "index.html", "../"),
+    ):
+        html_text = page.read_text(encoding="utf-8")
+        assert re.search(rf'src="{re.escape(prefix)}visits\.js\?v=[0-9a-f]{{10}}"', html_text), page
+
+
+def test_visits_send_only_the_path(dist):
+    # Счётчик — один запрос картинки на свой адрес GoatCounter, без чужого
+    # скрипта; ни запрос, ни фрагмент адреса страницы туда не уходят.
+    script = (dist / "visits.js").read_text(encoding="utf-8")
+    assert "https://konkin-nikita.goatcounter.com/count?p=" in script
+    assert "encodeURIComponent(location.pathname)" in script
+    assert "location.hash" not in script and "location.search" not in script and "location.href" not in script
+    assert "gc.zgo.at" not in script
