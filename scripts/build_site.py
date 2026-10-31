@@ -665,6 +665,7 @@ def render_index(course: dict, files: dict[str, dict]) -> str:
 </div>
 {OPEN_ON_LINK}
 <script src="theme.js?v={version(SITE / 'theme.js')}"></script>
+<script src="visits.js?v={version(SITE / 'visits.js')}"></script>
 </body>
 </html>
 """
@@ -732,6 +733,7 @@ def common_stamps(course: dict, script: Path) -> dict[str, str]:
         "<!-- theme-button -->": THEME_BUTTON,
         "<!-- mlg-config -->": config_script(course),
         'src="../theme.js"': f'src="../theme.js?v={version(SITE / "theme.js")}"',
+        'src="../visits.js"': f'src="../visits.js?v={version(SITE / "visits.js")}"',
         'src="../crypto.js"': f'src="../crypto.js?v={version(SITE / "crypto.js")}"',
         'href="../style.css"': f'href="../style.css?v={version(SITE / "style.css")}"',
         f'src="{script.name}"': f'src="{script.name}?v={version(script)}"',
@@ -760,6 +762,7 @@ def build(out: Path, journal: Path | None = None) -> None:
     (out / "index.html").write_text(render_index(course, files), encoding="utf-8")
     shutil.copyfile(SITE / "style.css", out / "style.css")
     shutil.copyfile(SITE / "theme.js", out / "theme.js")
+    shutil.copyfile(SITE / "visits.js", out / "visits.js")
     shutil.copyfile(SITE / "crypto.js", out / "crypto.js")
     shutil.copytree(SITE / "fonts", out / "fonts")
     shutil.copytree(SITE / "journal", out / "journal")
