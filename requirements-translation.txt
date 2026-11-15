@@ -1,0 +1,14 @@
+# Л.р. № 5. Отдельное окружение Python 3.12, без TensorFlow.
+# Сначала установите подходящую сборку PyTorch для своего GPU:
+# https://pytorch.org/get-started/locally/
+# Диапазон сохраняет уже установленную совместимую CUDA-сборку.
+torch>=2.6,<3
+transformers==4.57.1
+sentencepiece==0.2.2
+sacremoses==0.2.0
+sacrebleu==2.6.0
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.7.2
+matplotlib==3.8.4
+ipykernel>=6.29,<8

@@ -16,6 +16,7 @@ on:
       - "Лекции/*.pdf"
       - "Л.р/**"
       - "requirements.txt"
+      - "requirements-translation.txt"
       - "tests/test_site.py"
       - "submit-server/**"
       - "tests/test_submit_server.py"

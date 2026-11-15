@@ -1,0 +1,45 @@
+{
+  "created_utc": "2026-11-15T19:10:55.270164+00:00",
+  "corpus_sha256": "799c94ac7ba46552151be954be558c7fe2ea53c0b9280e33dc426d157cdbc311",
+  "experiment": {
+    "model": "Helsinki-NLP/opus-mt-en-ru",
+    "revision": "bb09c99d180016eac6819df3dae68edb1690fdee",
+    "split_policy": "source_coverage_v1",
+    "seed": 42,
+    "near_duplicate_threshold": 0.88,
+    "epochs": 5,
+    "learning_rate": 2e-05,
+    "batch_size": 8,
+    "max_tokens": 128,
+    "generation": {
+      "num_beams": 4,
+      "do_sample": false,
+      "max_new_tokens": 128
+    }
+  },
+  "best_epoch": 5,
+  "best_validation_loss": 0.9172262749905251,
+  "device": "NVIDIA GeForce RTX 5080",
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "4.57.1",
+    "sentencepiece": "0.2.2",
+    "sacremoses": "0.2.0",
+    "sacrebleu": "2.6.0",
+    "scikit-learn": "1.7.2",
+    "pandas": "2.2.2",
+    "numpy": "1.26.4"
+  },
+  "split_sizes": {
+    "train": 96,
+    "validation": 32,
+    "test": 32
+  },
+  "split_seed": 81,
+  "training_seconds": 3.686164099999587,
+  "view_mode": "train",
+  "metric_signatures": {
+    "BLEU": "nrefs:1|case:mixed|eff:no|tok:13a|smooth:exp|version:2.6.0",
+    "chrF": "nrefs:1|case:mixed|eff:yes|nc:6|nw:0|space:no|version:2.6.0"
+  }
+}

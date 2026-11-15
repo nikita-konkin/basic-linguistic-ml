@@ -67,6 +67,10 @@ KIT_README = """\
    penguins через seaborn, а «Классификация текстов» в разделе 13 при первом
    запуске скачивает корпус 20 Newsgroups (около 14 МБ).
 4. Л.р. № 4 удобнее всего выполнять в Google Colab со средой выполнения GPU.
+5. Л.р. № 5 использует отдельное окружение без TensorFlow:
+       pip install -r requirements-translation.txt
+   Рекомендуется GPU. В режиме MODE="saved" доступны переводы и потери
+   реального запуска из data/lab5_demo/: обучение и загрузка модели не нужны.
 
 Сайт курса: https://konkin-nikita.ru/basic-linguistic-ml/
 """
@@ -110,7 +114,7 @@ def check_labs(labs: list[dict]) -> None:
     битую ссылку. Список текущих берётся там же, где его берёт прогон
     ноутбуков, — устаревшие версии отсеиваются по LEGACY_MARKERS.
     """
-    on_disk = {nfc(name) for name in find_notebooks(with_tensorflow=True)}
+    on_disk = {nfc(name) for name in find_notebooks(with_tensorflow=True, with_translation=True)}
     listed = {nfc(Path(lab["file"]).name) for lab in labs}
     if on_disk != listed:
         missing = sorted(on_disk - listed)
@@ -161,11 +165,12 @@ def build_kit(course: dict, target: Path) -> None:
             source = resolve(lab["file"])
             _add(archive, source, f"{KIT_FOLDER}/{source.name}")
         data_dir = LAB_DIR / "data"
-        for name in sorted(os.listdir(data_dir), key=nfc):
-            path = data_dir / name
-            if path.is_file() and not name.startswith("."):
-                _add(archive, path, f"{KIT_FOLDER}/data/{name}")
+        for path in sorted(data_dir.rglob("*"), key=lambda p: nfc(p.relative_to(data_dir).as_posix())):
+            relative = path.relative_to(data_dir)
+            if path.is_file() and not any(part.startswith(".") for part in relative.parts):
+                _add(archive, path, f"{KIT_FOLDER}/data/{relative.as_posix()}")
         _add(archive, ROOT / "requirements.txt", f"{KIT_FOLDER}/requirements.txt")
+        _add(archive, ROOT / "requirements-translation.txt", f"{KIT_FOLDER}/requirements-translation.txt")
         info = zipfile.ZipInfo(f"{KIT_FOLDER}/КАК_ЗАПУСТИТЬ.txt", date_time=ZIP_TIME)
         info.compress_type = zipfile.ZIP_DEFLATED
         info.external_attr = 0o644 << 16
@@ -462,7 +467,7 @@ def section_materials(course: dict, files: dict[str, dict]) -> str:
         "zip",
         "Комплект для лабораторных",
         files["kit"],
-        "Все ноутбуки, папка `data/` с корпусом и `requirements.txt`. Распакуйте и открывайте "
+        "Все ноутбуки, папка `data/` с корпусом и примером запуска № 5, файлы зависимостей. Распакуйте и открывайте "
         "ноутбуки из этой папки — пути к данным в них относительные.",
     )
     labs = "".join(

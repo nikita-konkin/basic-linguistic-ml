@@ -80,7 +80,7 @@ def test_every_lecture_and_notebook_is_published(course, dist):
 def test_lab_list_matches_the_folder(course):
     # Та же проверка, что делает сборка: новая работа не потеряется молча.
     build_site.check_labs(course["labs"])
-    assert len(course["labs"]) == 5
+    assert len(course["labs"]) == 6
 
 
 def test_local_links_resolve(dist, links):
@@ -109,6 +109,10 @@ def test_kit_has_notebooks_data_and_requirements(course, dist):
     assert sorted(notebooks) == sorted(f"{folder}/{nfc(Path(lab['file']).name)}" for lab in course["labs"])
     assert f"{folder}/data/loc_corpus.csv" in names
     assert f"{folder}/requirements.txt" in names
+    assert f"{folder}/requirements-translation.txt" in names
+    assert f"{folder}/data/lab5_demo/manifest.json" in names
+    assert f"{folder}/data/lab5_demo/predictions.csv" in names
+    assert not any("lab5_outputs" in name or name.endswith((".bin", ".safetensors", ".pt")) for name in names)
     assert all(name == nfc(name) for name in names), "имена в архиве должны быть в NFC"
     assert not [name for name in names if any(marker in name for marker in LEGACY_MARKERS)]
 
